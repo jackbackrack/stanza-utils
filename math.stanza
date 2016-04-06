@@ -1,0 +1,6 @@
+defpackage utils :
+  import core
+  import collections
+  import math
+
+public defn round (x:Float) -> Float : floor(x + 0.5f)

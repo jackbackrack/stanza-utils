@@ -1,0 +1,32 @@
+defpackage utils :
+  import core
+  import collections
+  import math
+
+public defn digit? (c:Int) -> True|False :
+  c >= to-int('0') and c <= to-int('9')
+
+public defn lower? (c:Int) -> True|False :
+  c >= to-int('a') and c <= to-int('z')
+
+public defn upper? (c:Int) -> True|False :
+  c >= to-int('A') and c <= to-int('Z')
+
+public defn upper-case (c:Int) -> Int :
+  if lower?(c) :
+    c - to-int('a') + to-int('A')
+  else :
+    c
+
+public defn lower-case (c:Int) -> Int :
+  if upper?(c) :
+    c - to-int('A') + to-int('a')
+  else :
+    c
+
+public defn digit? (c:Char) -> True|False : digit?(to-int(c))
+public defn lower? (c:Char) -> True|False : lower?(to-int(c))
+public defn upper? (c:Char) -> True|False : upper?(to-int(c))
+public defn upper-case (c:Char) -> Char : to-char(upper-case(to-int(c)))
+public defn lower-case (c:Char) -> Char : to-char(lower-case(to-int(c)))
+

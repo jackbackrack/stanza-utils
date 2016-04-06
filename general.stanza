@@ -1,0 +1,10 @@
+defpackage utils :
+  import core
+  import collections
+  import math
+
+public defn default<T> (v:T|False, d:T) -> T :
+  match(v) :
+    (t:False) : d
+    (o:T) : o
+

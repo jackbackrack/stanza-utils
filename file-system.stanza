@@ -1,0 +1,70 @@
+defpackage utils :
+  import core
+  import collections
+  import math
+
+lostanza deftype DirEntryStruct :
+  file-number:int
+  record-length0:byte
+  record-length1:byte
+  type:byte
+  name-length:byte
+  name:byte ...
+
+extern malloc: (long) -> ptr<byte>
+extern getcwd: (ptr<byte>, int) -> ptr<byte>
+extern printf: (ptr<byte>, ? ...) -> int
+extern opendir: (ptr<byte>) -> ptr<?>
+extern readdir: (ptr<?>) -> ptr<DirEntryStruct>
+extern closedir: (ptr<?>) -> int
+
+lostanza deftype Dir :
+  value: ptr<?>
+
+lostanza deftype DirEntry :
+  value: ptr<DirEntryStruct>
+
+lostanza defn opendir (pathname:ref<String>) -> ref<Dir> :
+  val ptr = call-c opendir(addr!(pathname.chars))
+  return new Dir{ptr}
+
+lostanza defn closedir (dir:ref<Dir>) -> ref<False> :
+  call-c closedir(dir.value)
+  return false
+
+lostanza defn readdir (dir:ref<Dir>) -> ref<DirEntry> :
+  val ptr = call-c readdir(dir.value)
+  return new DirEntry{ptr}
+
+lostanza defn get-cwd () -> ref<String> :
+  val bytes = call-c malloc(256)
+  val res   = call-c getcwd(bytes, 256)
+  return String(res)
+
+lostanza defn entry-name (ent:ref<DirEntry>) -> ref<String> :
+  val entry = ent.value
+  return String(addr(entry.name))
+
+lostanza defn entry-dir? (ent:ref<DirEntry>) -> ref<True|False> :
+  val entry = ent.value
+  if entry.type == 4L :
+    return true
+  else :
+    return false
+
+lostanza defn entry-null? (dir:ref<DirEntry>) -> ref<True|False> :
+  if dir.value == (0L as ptr<?>) :
+    return true
+  else :
+    return false
+
+public defn directory-entries (pathname:String) -> Seq<String> :
+  generate<String> :
+    defn* loop (dir) :
+      val ent = readdir(dir)
+      if entry-null?(ent) :
+        closedir(dir)
+      else :
+        yield(string-join([entry-name(ent) ("/" when entry-dir?(ent) else "")]))
+        loop(dir)
+    loop(opendir(pathname))
