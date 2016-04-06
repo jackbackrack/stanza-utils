@@ -3,6 +3,15 @@ defpackage utils :
   import collections
   import math
 
+;;; GENERAL
+
+public defn default<T> (v:T|False, d:T) -> T :
+  match(v) :
+    (t:False) : d
+    (o:T) : o
+
+;;; CHARACTERS
+
 public defn digit? (c:Int) -> True|False :
   c >= to-int('0') and c <= to-int('9')
 
@@ -30,3 +39,6 @@ public defn upper? (c:Char) -> True|False : upper?(to-int(c))
 public defn upper-case (c:Char) -> Char : to-char(upper-case(to-int(c)))
 public defn lower-case (c:Char) -> Char : to-char(lower-case(to-int(c)))
 
+;;; MATH
+
+public defn round (x:Float) -> Float : floor(x + 0.5f)
