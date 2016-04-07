@@ -1,4 +1,4 @@
-defpackage utils :
+defpackage file-system :
   import core
   import collections
   import math
@@ -36,7 +36,7 @@ lostanza defn readdir (dir:ref<Dir>) -> ref<DirEntry> :
   val ptr = call-c readdir(dir.value)
   return new DirEntry{ptr}
 
-lostanza defn get-cwd () -> ref<String> :
+public lostanza defn get-cwd () -> ref<String> :
   val bytes = call-c malloc(256)
   val res   = call-c getcwd(bytes, 256)
   return String(res)

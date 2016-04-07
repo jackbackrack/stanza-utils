@@ -39,6 +39,29 @@ public defn upper? (c:Char) -> True|False : upper?(to-int(c))
 public defn upper-case (c:Char) -> Char : to-char(upper-case(to-int(c)))
 public defn lower-case (c:Char) -> Char : to-char(lower-case(to-int(c)))
 
+public defn trim (s:String, ok?:(Char) -> True|False) -> String :
+   match(index-when(ok?, s)) :
+      (i:Int) :
+         val n = length(s)
+         val j = for i in (n - 1) through 0 by -1 find! :
+            ok?(s[i])
+         s[i through j]   
+      (i:False) : ""
+
+public defn split* (str:String, s:String) -> Seq<String> :
+   generate<String> :
+      val strl = length(str)
+      val sl = length(s)
+      defn loop (b:Int) :
+         if b < strl :
+            match(index-of-chars(str, b to false, s)) :
+               (i:Int) :
+                  yield(str[b to i])
+                  loop(i + sl)
+               (i:False) :
+                  yield(str[b to false])
+      loop(0)
+
 ;;; MATH
 
 public defn round (x:Float) -> Float : floor(x + 0.5f)
