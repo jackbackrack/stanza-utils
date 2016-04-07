@@ -21,6 +21,9 @@ public defn lower? (c:Int) -> True|False :
 public defn upper? (c:Int) -> True|False :
   c >= to-int('A') and c <= to-int('Z')
 
+public defn printable? (c:Int) -> True|False :
+  c >= to-int(' ') and c <= to-int('~')
+
 public defn upper-case (c:Int) -> Int :
   if lower?(c) :
     c - to-int('a') + to-int('A')
