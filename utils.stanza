@@ -10,6 +10,13 @@ public defn default<T> (v:T|False, d:T) -> T :
     (t:False) : d
     (o:T) : o
 
+public defn hex-to-int (s: String) -> Int :
+  var res = 0
+  for i in 2 to length(s) do :
+    val dig = index-of("0123456789ABCDEF", s[i]) as Int
+    res = res * 16 + dig
+  res
+
 ;;; CHARACTERS
 
 public defn digit? (c:Int) -> True|False :
@@ -64,6 +71,17 @@ public defn split* (str:String, s:String) -> Seq<String> :
                (i:False) :
                   yield(str[b to false])
       loop(0)
+
+public defn to-array!<?T> (xs:Seqable<?T>) -> Array<T> :
+   match(xs) :
+      (xs:Seqable<T> & Lengthable) :
+         val n = length(xs)
+         val a = Array<T>(n)
+         for (x in xs, i in 0 to n) do :
+            a[i] = x
+         a
+      (xs) :
+         to-array!(to-list(xs))
 
 ;;; MATH
 
