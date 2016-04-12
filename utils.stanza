@@ -46,8 +46,6 @@ public defn lower-case (c:Int) -> Int :
 public defn digit? (c:Char) -> True|False : digit?(to-int(c))
 public defn lower? (c:Char) -> True|False : lower?(to-int(c))
 public defn upper? (c:Char) -> True|False : upper?(to-int(c))
-public defn upper-case (c:Char) -> Char : to-char(upper-case(to-int(c)))
-public defn lower-case (c:Char) -> Char : to-char(lower-case(to-int(c)))
 
 public defn trim (s:String, ok?:(Char) -> True|False) -> String :
    match(index-when(ok?, s)) :
@@ -83,6 +81,3 @@ public defn to-array!<?T> (xs:Seqable<?T>) -> Array<T> :
       (xs) :
          to-array!(to-list(xs))
 
-;;; MATH
-
-public defn round (x:Float) -> Float : floor(x + 0.5f)
