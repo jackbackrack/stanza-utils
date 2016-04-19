@@ -1,3 +1,5 @@
+;; See license.txt for details about licensing.
+
 defpackage file-system :
   import core
   import collections
