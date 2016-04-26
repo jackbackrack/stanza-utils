@@ -1,0 +1,91 @@
+defpackage socket :
+  import core
+  import collections
+
+public lostanza deftype Socket :
+  fd: int
+
+extern close: (int) -> int
+extern read: (int, ptr<byte>, int) -> int
+extern poll: (int) -> int
+extern write: (int, ptr<byte>, int) -> int
+extern malloc: (int) -> ptr<byte>
+extern free: (ptr<byte>) -> int
+
+public lostanza defn poll (s:ref<Socket>) -> ref<True|False> :
+  val res = call-c poll(s.fd)
+  if res == 0: return false else: return true
+
+public lostanza defn recv (s:ref<Socket>) -> ref<String> :
+  val max = 256
+  val buf = call-c malloc(max)
+  val n   = call-c read(s.fd, buf, max)
+  val res = String(n, buf)
+  call-c free(buf)
+  return res  
+
+public lostanza defn send (s:ref<Socket>, m:ref<String>) -> ref<False> :
+  call-c write(s.fd, addr!(m.chars), length(m).value)
+  return false
+
+public lostanza defn close (s:ref<Socket>) -> ref<False> :
+  call-c close(s.fd)
+  return false
+
+lostanza defn socket-fd (s:ref<Socket>) -> ref<Int> :
+  return new Int{s.fd}
+
+extern client: (ptr<byte>, int) -> int
+extern server: (int, ptr<((int) -> int)>, ptr<((int, ptr<byte>) -> int)>, ptr<((int) -> int)>) -> int
+
+defn default-open-callback (s:Socket) -> False: false
+
+var *open-callback*:((Socket) -> False) = default-open-callback
+
+extern defn do_open_callback (fd:int) -> int :
+  val s = new Socket{fd}
+  [*open-callback*](s)
+  return 0
+
+lostanza defn set-open-callback (f:ref<((Socket) -> False)>) -> ref<False> :
+  *open-callback* = f
+  return false
+
+defn default-read-callback (s:Socket, buf:String) -> False: false
+
+var *read-callback*:((Socket, String) -> False) = default-read-callback
+
+extern defn do_read_callback (fd:int, buf:ptr<byte>) -> int :
+  val s = new Socket{fd}
+  val b = String(buf)
+  [*read-callback*](s, b)
+  return 0
+
+lostanza defn set-read-callback (f:ref<((Socket, String) -> False)>) -> ref<False> :
+  *read-callback* = f
+  return false
+
+defn default-close-callback (s:Socket) -> False: false
+
+var *close-callback*:((Socket) -> False) = default-close-callback
+
+extern defn do_close_callback (fd:int) -> int :
+  val s = new Socket{fd}
+  [*close-callback*](s)
+  return 0
+
+lostanza defn set-close-callback (f:ref<((Socket) -> False)>) -> ref<False> :
+  *close-callback* = f
+  return false
+
+public lostanza defn Client (hostname:ref<String>, port:ref<Int>) -> ref<Socket> :
+  val fd = call-c client(addr!(hostname.chars), port.value)
+  return new Socket{fd}
+
+public lostanza defn Server (port:ref<Int>, open-callback:ref<((Socket) -> False)>, read-callback:ref<((Socket, String) -> False)>, close-callback:ref<((Socket) -> False)>) -> ref<False> :
+  set-open-callback(open-callback)
+  set-read-callback(read-callback)
+  set-close-callback(close-callback)
+  val fd = call-c server(port.value, addr(do_open_callback), addr(do_read_callback), addr(do_close_callback))
+  return false
+
