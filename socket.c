@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
@@ -19,6 +20,10 @@ void error(const char *msg) {
   perror(msg);
   exit(0);
 }
+
+#ifndef h_addr
+#define h_addr h_addr_list[0]
+#endif
 
 int client (char* hostname, int portno) {
   int sockfd, n;
