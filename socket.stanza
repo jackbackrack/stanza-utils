@@ -52,6 +52,8 @@ public defn BufferedSocket (fd:Int) :
   new BufferedSocket :
     defmethod print (this, s:String) : send(sock, s)
     defmethod print (this, c:Char) : print(this, to-string(c))
+    defmethod avail? (this) :
+      idx < len or poll(sock)
     defmethod peek? (this) :
       if idx >= len :
         len = recv-into(sock, buf)

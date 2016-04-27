@@ -87,6 +87,7 @@ public defn to-array!<?T> (xs:Seqable<?T>) -> Array<T> :
 
 public deftype BufferedInputStream <: InputStream
 public defmulti peek? (s:BufferedInputStream) -> Char|False
+public defmulti avail? (s:BufferedInputStream) -> True|False
 
 public deftype OneCharBufferedInputStream <: BufferedInputStream
 public defmulti buf (s:OneCharBufferedInputStream) -> Char|False
@@ -97,6 +98,9 @@ defmethod peek? (s:OneCharBufferedInputStream) -> Char|False :
   match(buf(s)) :
     (f:False): (set-buf(s, do-get-char(s)), buf(s))
     (c:Char):  c
+
+defmethod avail? (s:OneCharBufferedInputStream) -> True|False :
+  peek?(s) is Char
 
 defmethod get-char (s:OneCharBufferedInputStream) -> Char|False :
   val c = peek?(s)
