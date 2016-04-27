@@ -29,12 +29,10 @@ int client (char* hostname, int portno) {
   
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0) 
-    error("ERROR opening socket");
+    return sockfd;
   server = gethostbyname(hostname);
-  if (server == NULL) {
-    fprintf(stderr,"ERROR, no such host\n");
-    exit(0);
-  }
+  if (server == NULL) 
+    return -1;
   bzero((char *) &serv_addr, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   bcopy((char *)server->h_addr, 
@@ -42,7 +40,7 @@ int client (char* hostname, int portno) {
         server->h_length);
   serv_addr.sin_port = htons(portno);
   if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
-    error("ERROR connecting");
+    return -1;
   return sockfd;
 }
 
@@ -70,7 +68,7 @@ int server(int portno, fd_open_callback_t do_open, fd_read_callback_t do_read, f
   // printf("LISTEN FD %d\n", listen_desc);
   
   if(listen_desc < 0)
-    printf("Failed creating socket\n");
+    return -1;
 
   bzero((char *)&serv_addr, sizeof(serv_addr));
 
@@ -79,7 +77,7 @@ int server(int portno, fd_open_callback_t do_open, fd_read_callback_t do_read, f
   serv_addr.sin_port = htons(portno);
 
   if (bind(listen_desc, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-    printf("Failed to bind\n");
+    return -1;
 
   listen(listen_desc, 5);
 

@@ -14,6 +14,8 @@ extern poll: (int) -> int
 extern write: (int, ptr<byte>, int) -> int
 extern malloc: (int) -> ptr<byte>
 extern free: (ptr<byte>) -> int
+protected extern strerror: (int) -> ptr<byte>
+protected extern get_errno: () -> int
 
 public lostanza defn Socket (fd:ref<Int>) -> ref<Socket> :
   return new Socket{fd.value}
@@ -110,9 +112,30 @@ lostanza defn set-close-callback (f:ref<((Socket) -> False)>) -> ref<False> :
   *close-callback* = f
   return false
 
+public defstruct SocketOpenException <: IOException :
+   hostname: String
+   portno: Int
+   cause: String
+
+defmethod print (o:OutputStream, e:SocketOpenException) :
+   print(o, "Error occurred when attempting to open socket %_ %_. %_." % [hostname(e), portno(e), cause(e)])
+
+lostanza defn linux-error-msg () -> ref<String> :
+   val s = call-c strerror(call-c get_errno())
+   return String(s)
+
 public lostanza defn Client (hostname:ref<String>, port:ref<Int>) -> ref<BufferedSocket> :
   val fd = call-c client(addr!(hostname.chars), port.value)
+  if fd < 0 : throw(SocketOpenException(hostname, port, linux-error-msg()))
   return BufferedSocket(new Int{fd})
+
+public deftype NullClient <: BufferedInputStream & OutputStream
+public defn NullClient () :
+  new NullClient :
+    defmethod avail? (this) : false
+    defmethod peek? (this) : false
+    defmethod get-char (this) : false
+    defmethod print (this, c:Char) : false
 
 public lostanza defn Server (port:ref<Int>,
                              open-callback:ref<((Socket) -> False)>,
@@ -122,4 +145,5 @@ public lostanza defn Server (port:ref<Int>,
   set-read-callback(read-callback)
   set-close-callback(close-callback)
   val fd = call-c server(port.value, addr(do_open_callback), addr(do_read_callback), addr(do_close_callback))
+  if fd < 0 : throw(SocketOpenException(String("localhost"), port, linux-error-msg()))
   return false
