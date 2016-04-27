@@ -42,8 +42,7 @@ public lostanza defn close (s:ref<Socket>) -> ref<False> :
 public lostanza defn socket-fd (s:ref<Socket>) -> ref<Int> :
   return new Int{s.fd}
 
-public deftype BufferedSocket <: BufferedInputStream
-public defmulti send (sock:BufferedSocket, str:String) -> False
+public deftype BufferedSocket <: BufferedInputStream & OutputStream
 
 public defn BufferedSocket (fd:Int) :
   val buf  = CharArray(256)
@@ -51,7 +50,8 @@ public defn BufferedSocket (fd:Int) :
   var len  = 0
   val sock = Socket(fd)
   new BufferedSocket :
-    defmethod send (this, s:String) : send(sock, s)
+    defmethod print (this, s:String) : send(sock, s)
+    defmethod print (this, c:Char) : print(this, to-string(c))
     defmethod peek? (this) :
       if idx >= len :
         len = recv-into(sock, buf)
