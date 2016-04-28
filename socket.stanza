@@ -10,18 +10,18 @@ public lostanza deftype Socket :
 
 extern close: (int) -> int
 extern read: (int, ptr<byte>, int) -> int
-extern poll: (int) -> int
 extern write: (int, ptr<byte>, int) -> int
 extern malloc: (int) -> ptr<byte>
 extern free: (ptr<byte>) -> int
 protected extern strerror: (int) -> ptr<byte>
 protected extern get_errno: () -> int
+extern socket_poll: (int) -> int
 
 public lostanza defn Socket (fd:ref<Int>) -> ref<Socket> :
   return new Socket{fd.value}
 
 public lostanza defn poll (s:ref<Socket>) -> ref<True|False> :
-  val res = call-c poll(s.fd)
+  val res = call-c socket_poll(s.fd)
   if res == 0: return false else: return true
 
 public lostanza defn recv-into (s:ref<Socket>, buf:ref<CharArray>) -> ref<Int> :
@@ -69,8 +69,8 @@ public defn BufferedSocket (fd:Int) :
         (f:False) : false
         (c:Char) : (idx = idx + 1, c)
 
-extern client: (ptr<byte>, int) -> int
-extern server: (int, ptr<((int) -> int)>, ptr<((int, ptr<byte>) -> int)>, ptr<((int) -> int)>) -> int
+extern socket_client: (ptr<byte>, int) -> int
+extern socket_server: (int, ptr<((int) -> int)>, ptr<((int, ptr<byte>) -> int)>, ptr<((int) -> int)>) -> int
 
 defn default-open-callback (s:Socket) -> False: false
 
@@ -125,7 +125,7 @@ lostanza defn linux-error-msg () -> ref<String> :
    return String(s)
 
 public lostanza defn Client (hostname:ref<String>, port:ref<Int>) -> ref<BufferedSocket> :
-  val fd = call-c client(addr!(hostname.chars), port.value)
+  val fd = call-c socket_client(addr!(hostname.chars), port.value)
   if fd < 0 : throw(SocketOpenException(hostname, port, linux-error-msg()))
   return BufferedSocket(new Int{fd})
 
@@ -137,13 +137,14 @@ public defn NullClient () :
     defmethod get-char (this) : false
     defmethod print (this, c:Char) : false
 
-public lostanza defn Server (port:ref<Int>,
-                             open-callback:ref<((Socket) -> False)>,
-                             read-callback:ref<((Socket, String) -> False)>,
-                             close-callback:ref<((Socket) -> False)>) -> ref<False> :
+public lostanza defn Server
+    (port:ref<Int>,
+     open-callback:ref<((Socket) -> False)>,
+     read-callback:ref<((Socket, String) -> False)>,
+     close-callback:ref<((Socket) -> False)>) -> ref<False> :
   set-open-callback(open-callback)
   set-read-callback(read-callback)
   set-close-callback(close-callback)
-  val fd = call-c server(port.value, addr(do_open_callback), addr(do_read_callback), addr(do_close_callback))
+  val fd = call-c socket_server(port.value, addr(do_open_callback), addr(do_read_callback), addr(do_close_callback))
   if fd < 0 : throw(SocketOpenException(String("localhost"), port, linux-error-msg()))
   return false

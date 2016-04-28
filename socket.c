@@ -16,7 +16,7 @@ typedef int (*fd_open_callback_t)(int);
 typedef int (*fd_close_callback_t)(int);
 typedef int (*fd_read_callback_t)(int, char*);
 
-void error(const char *msg) {
+static void error(const char *msg) {
   perror(msg);
   exit(0);
 }
@@ -25,7 +25,7 @@ void error(const char *msg) {
 #define h_addr h_addr_list[0]
 #endif
 
-int client (char* hostname, int portno) {
+int socket_client (char* hostname, int portno) {
   int sockfd, n;
   struct sockaddr_in serv_addr;
   struct hostent *server;
@@ -49,7 +49,7 @@ int client (char* hostname, int portno) {
   return sockfd;
 }
 
-int poll(int fd) {
+int socket_poll(int fd) {
   struct timeval timeout;
   timeout.tv_sec = 0;
   timeout.tv_usec = 0;
@@ -59,7 +59,7 @@ int poll(int fd) {
   return select(fd + 1, &fdset, NULL, NULL, &timeout) > 0;
 }
 
-int server(int portno, fd_open_callback_t do_open, fd_read_callback_t do_read, fd_close_callback_t do_close) {
+int socket_server(int portno, fd_open_callback_t do_open, fd_read_callback_t do_read, fd_close_callback_t do_close) {
   int listen_desc, conn_desc;
   int maxfd, maxi;
   fd_set tempset, savedset;
