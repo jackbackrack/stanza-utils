@@ -5,7 +5,7 @@ defpackage socket :
   import collections
   import utils
 
-public lostanza deftype Socket :
+public lostanza deftype Socket <: PollableInputStream & OutputStream :
   fd: int
 
 extern close: (int) -> int
@@ -24,19 +24,34 @@ public lostanza defn poll (s:ref<Socket>) -> ref<True|False> :
   val res = call-c socket_poll(s.fd)
   if res == 0: return false else: return true
 
-public lostanza defn recv-into (s:ref<Socket>, buf:ref<CharArray>) -> ref<Int> :
-  val n = call-c read(s.fd, addr!(buf.chars), buf.length as int)
+public lostanza defn recv-into (s:ref<Socket>, buf:ref<CharArray>, i:ref<Int>) -> ref<Int> :
+  val n = call-c read(s.fd, addr!(buf.chars) + i.value, buf.length as int)
   return new Int{n}
 
-public lostanza defn recv (s:ref<Socket>) -> ref<String> :
-  val buf = CharArray(new Int{256})
-  val n   = recv-into(s, buf).value
-  return String(n, addr!(buf.chars))
+defmethod avail? (s:Socket) -> True|False :
+  poll(s)
+
+defmethod get-char (s:Socket) -> Char|False :
+  val buf = CharArray(1)
+  val n = recv-into(s, buf, 0)
+  if n <= 0: false else: buf[0]
+
+defmethod fill (xs:CharArray, r:Range, s:Socket) :
+  ;; #if-not-defined(OPTIMIZE) :
+  ;;    ensure-index-range(xs, r)
+  val [b,e] = range-bound(xs, r)
+  recv-into(s, xs, b)
 
 public lostanza defn send (s:ref<Socket>, m:ref<String>) -> ref<False> :
   call-c write(s.fd, addr!(m.chars), length(m).value)
   return false
 
+defmethod print (s:Socket, x:String) -> False :
+  send(s, x)
+  
+defmethod print (s:Socket, x:Char) -> False :
+  send(s, to-string(x))
+  
 public lostanza defn close (s:ref<Socket>) -> ref<False> :
   call-c close(s.fd)
   return false
@@ -47,27 +62,12 @@ public lostanza defn socket-fd (s:ref<Socket>) -> ref<Int> :
 public deftype BufferedSocket <: BufferedInputStream & OutputStream
 
 public defn BufferedSocket (fd:Int) :
-  val buf  = CharArray(256)
-  var idx  = 0
-  var len  = 0
   val sock = Socket(fd)
+  val buf  = CharBuffer(256, sock)
   new BufferedSocket :
+    defmethod buffer (this) : buf
     defmethod print (this, s:String) : send(sock, s)
     defmethod print (this, c:Char) : print(this, to-string(c))
-    defmethod avail? (this) :
-      idx < len or poll(sock)
-    defmethod peek? (this) :
-      if idx >= len :
-        len = recv-into(sock, buf)
-        idx = 0
-      if len == 0 :
-        false
-      else :
-        buf[idx]
-    defmethod get-char (this) :
-      match(peek?(this)) :
-        (f:False) : false
-        (c:Char) : (idx = idx + 1, c)
 
 extern socket_client: (ptr<byte>, int) -> int
 extern socket_server: (int, ptr<((int) -> int)>, ptr<((int, ptr<byte>) -> int)>, ptr<((int) -> int)>) -> int
