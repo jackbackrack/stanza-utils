@@ -1,0 +1,84 @@
+defpackage exp-parser :
+   import core
+   import math
+   import collections
+   import reader
+   import geom
+   import ao
+
+;============================================================
+;===================== Syntax Tree ==========================
+;============================================================
+
+public deftype Exp
+public defstruct OrOp <: Exp : (x:Exp, y:Exp)
+public defstruct AndOp <: Exp : (x:Exp, y:Exp)
+public defstruct AddOp <: Exp : (x:Exp, y:Exp)
+public defstruct ModOp <: Exp : (x:Exp, y:Exp)
+public defstruct SubOp <: Exp : (x:Exp, y:Exp)
+public defstruct MulOp <: Exp : (x:Exp, y:Exp)
+public defstruct DivOp <: Exp : (x:Exp, y:Exp)
+public defstruct Identifier <: Exp : (name:Symbol)
+public defstruct CallOp <: Exp : (f:Identifier, args:List<Exp>)
+public defstruct Number <: Exp : (value:Double)
+public defstruct Integer <: Exp : (value:Int)
+
+defmethod print (o:OutputStream, e:Exp) :
+   print{o, _} $ match(e) :
+      (e:OrOp) : "%_ | %_" % [x(e), y(e)]
+      (e:AndOp) : "%_ & %_" % [x(e), y(e)]
+      (e:AddOp) : "%_ + %_" % [x(e), y(e)]
+      (e:ModOp) : "%_ %% %_" % [x(e), y(e)]
+      (e:SubOp) : "%_ - %_" % [x(e), y(e)]
+      (e:MulOp) : "%_ * %_" % [x(e), y(e)]
+      (e:DivOp) : "%_ / %_" % [x(e), y(e)]
+      (e:CallOp) : "%_(%,)" % [f(e), args(e)]
+      (e:Identifier) : name(e)
+      (e:Number) : value(e)
+      (e:Integer) : value(e)
+
+
+;============================================================
+;================== Parser Definition =======================
+;============================================================
+
+defn* apply-suffix-ops (x:Exp, fs:List<(Exp -> Exp)>) -> Exp :
+   if empty?(fs) : x
+   else : apply-suffix-ops(head(fs)(x), tail(fs))
+
+defsyntax ao :
+   defrule :
+      exp = (?x:#exp0 ?ops:#op0 ...) : apply-suffix-ops(x, ops)
+      exp0 = (?x:#exp1 ?ops:#op1 ...) : apply-suffix-ops(x, ops)
+      exp1 = (?x:#term ?ops:#op2 ...) : apply-suffix-ops(x, ops)
+      term = ((?e:#exp)) : e
+      term = (?x:#id) : x
+      term = (?x:#num) : x
+      term = (?x:#int) : x
+
+      id = (?x) when unwrap-token(x) is Symbol :
+         Identifier(unwrap-token(x))
+
+      num = (?x) when unwrap-token(x) is Double :
+         Number(unwrap-token(x))      
+
+      int = (?x) when unwrap-token(x) is Int :
+         Integer(unwrap-token(x))      
+
+      op0 = (+ ?y:#exp0) : AddOp{_:Exp, y}
+      op0 = (- ?y:#exp0) : SubOp{_:Exp, y}
+      op0 = (& ?y:#exp0) : AndOp{_:Exp, y}
+      op0 = (~ | ?y:#exp0) : OrOp{_:Exp, y}
+
+      op1 = (% ?y:#exp1) : ModOp{_:Exp, y}
+      op1 = (* ?y:#exp1) : MulOp{_:Exp, y}
+      op1 = (/ ?y:#exp1) : DivOp{_:Exp, y}
+
+      op2 = ((@do ?args:#exp ...)) : CallOp{_:Identifier, args}
+
+public defn parse-exps (form) -> List<Exp> :
+   with-syntax(ao) :
+      match-syntax(form) :
+         (?es:#exp ...) :
+            es          
+
