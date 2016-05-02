@@ -1,0 +1,98 @@
+defpackage calc :
+   import core
+   import math
+   import collections
+   import reader
+   import geom
+   import exp-parser
+
+defstruct Function :
+  arity: Int
+  apply: (List<Exp>) -> Double
+
+defn Function (f:(Double) -> Double) :
+  Function(1, fn (args:List<Exp>) : f(eval(args[0])))
+
+defn Function (f:(Double, Double) -> Double) :
+  Function(2, fn (args:List<Exp>) : f(eval(args[0]), eval(args[1])))
+
+defn Function (f:(Double, Double, Double) -> Double) :
+  Function(3, fn (args:List<Exp>) : f(eval(args[0]), eval(args[1]), eval(args[2])))
+
+defstruct UndefinedFunctionException <: Exception :
+  name: Symbol
+
+defmethod print (o:OutputStream, e:UndefinedFunctionException) :
+  print-all(o, ["Undefined function " name(e)])
+
+defmethod print (o:OutputStream, f:Function) :
+  print-all(o, ["FUN(" arity(f) ")"])
+
+defn apply (name:Symbol, args:List<Exp>) -> Double :
+  if key?(functions, name) :
+    apply(functions[name])(args)
+  else :
+    throw(UndefinedFunctionException(name))
+
+val bindings = HashTable<Symbol,(() -> Double)>()
+val functions = HashTable<Symbol,Function>()
+
+defstruct UndefinedBindingException <: Exception :
+  name: Symbol
+
+defmethod print (o:OutputStream, e:UndefinedBindingException) :
+  print(o, "Undefined binding %_" % [name(e)])
+
+defn lookup (n:Symbol) -> Double :
+  if not key?(bindings, n) :
+    throw(UndefinedBindingException(n))
+  bindings[n]()
+
+defstruct WrongNumberArgumentsException <: Exception :
+  fun: Function
+  num: Int
+
+defmethod print (o:OutputStream, e:WrongNumberArgumentsException) :
+  print(o, "Wrong number of args %_ for fun %_" % [num(e), arity(fun(e))])
+
+defn apply (f:Function, args:List<Exp>) -> Double :
+  if length(args) != arity(f) :
+    throw(WrongNumberArgumentsException(f, length(args)))
+  apply(f)(args)
+
+defn eval (e:Exp) -> Double :
+  match(e) :
+    (e:AddOp) : eval(x(e)) + eval(y(e))
+    (e:SubOp) : eval(x(e)) - eval(y(e))
+    (e:MulOp) : eval(x(e)) * eval(y(e))
+    (e:DivOp) : eval(x(e)) / eval(y(e))
+    (e:CallOp) : apply(name(f(e)), args(e))
+    (e:Identifier) : lookup(name(e))
+    (e:Number) : value(e)
+    (e:Integer) : to-double(value(e))
+
+public defn eval-double (s:String, default: Double) -> Double :
+  try :
+    val forms = read-all(s)
+    val es = parse-exps(forms)
+    if empty?(es) :
+      default
+    else :
+      val e = es[0]
+      eval(e)
+   catch (e:Exception) :
+     default
+
+;;; CALC BINDINGS
+
+bindings[`pi] = { 3.1415 }
+functions[`neg] = Function(fn (x:Double): negate(x))
+functions[`min] = Function(fn (x:Double, y:Double): min(x, y))
+functions[`max] = Function(fn (x:Double, y:Double): max(x, y))
+functions[`sin] = Function(fn (x:Double): sin(x))
+functions[`cos] = Function(fn (x:Double): cos(x))
+functions[`tan] = Function(fn (x:Double): tan(x))
+functions[`asin] = Function(fn (x:Double): asin(x))
+functions[`acos] = Function(fn (x:Double): acos(x))
+functions[`atan2] = Function(fn (x:Double, y:Double): atan2(x, y))
+functions[`exp] = Function(exp)
