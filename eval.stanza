@@ -1,0 +1,243 @@
+defpackage tst:
+  import core
+  import math
+  import collections
+  import reader
+  import stz/core-macros
+
+defn parse (form) -> ? :
+   with-syntax(core) :
+      match-syntax(form) :
+         (?es:#exp ... ?rest ...) :
+            es          
+
+defstruct Type :
+  name: Symbol
+  isa?: (?) -> True|False
+  as!: (?) -> ?
+
+defmethod print (o:OutputStream, f:Type) :
+  print-all(o, ["Type(" name(f) ")"])
+
+defstruct Function :
+  name: Symbol
+  arity: Int
+  apply: (List<HashTable<Symbol, ?>>, List) -> ? with: (setter => set-apply)
+
+defmethod print (o:OutputStream, f:Function) :
+  print-all(o, ["Function(" name(f) "," arity(f) ")"])
+
+defn eval-args (env:List<HashTable<Symbol, ?>>, args:List<?>) -> List :
+  to-list(generate: for arg in args do : yield(eval(env, arg)))
+
+defstruct WrongNumberArgumentsException <: Exception :
+  fun:  Function
+  args: List
+
+defmethod print (o:OutputStream, e:WrongNumberArgumentsException) :
+  print(o, "Wrong number for fun %_ on %_" % [fun(e) args(e)])
+
+defn check-arity (fun:Function, args:List) :
+  if arity(fun) != length(args) :
+    throw(WrongNumberArgumentsException(fun, args))
+
+defn Function (name:Symbol, f:() -> ?) :
+  Function(name, 0, fn (env:List<HashTable<Symbol, ?>>, args:List) :
+                      f())
+
+defn Function (name:Symbol, f:(?) -> ?) :
+  Function(name, 1, fn (env:List<HashTable<Symbol, ?>>, args:List) :
+                      f(args[0]))
+
+defn Function (name:Symbol, f:(?, ?) -> ?) :
+  Function(name, 2, fn (env:List<HashTable<Symbol, ?>>, args:List) :
+                      f(args[0], args[1]))
+
+defn Function (name:Symbol, f:(?, ?, ?) -> ?) :
+  Function(name, 3, fn (env:List<HashTable<Symbol, ?>>, args:List) :
+                      f(args[0], args[1], args[2]))
+
+defn Function (name:Symbol, f:(?, ?, ?, ?) -> ?) :
+  Function(name, 4, fn (env:List<HashTable<Symbol, ?>>, args:List) :
+                      f(args[0], args[1], args[2], args[3]))
+
+defn Function (name:Symbol, f:(?, ?, ?, ?, ?) -> ?) :
+  Function(name, 5, fn (env:List<HashTable<Symbol, ?>>, args:List) :
+                      f(args[0], args[1], args[2], args[3], args[4]))
+
+defn eval-begin (env:List<HashTable<Symbol, ?>>, l:List) -> ? :
+  defn* loop (elts:List) :
+    val res = eval(env, head(elts))
+    if empty?(tail(elts)) : res else : loop(tail(elts))
+  loop(l)
+
+defn add-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) -> False :
+  head(env)[name] = value
+
+defn add-frame (env:List<HashTable<Symbol, ?>>) -> List<HashTable<Symbol, ?>> :
+  cons(HashTable<Symbol, ?>(), env)
+
+defn add-bindings (env:List<HashTable<Symbol, ?>>, names:List<Symbol>, values:List) -> List<HashTable<Symbol, ?>> :
+  var nenv = add-frame(env)
+  for (name in names, value in values) do :
+    add-binding(nenv, name, value)
+  nenv
+
+defstruct UndefinedBindingException <: Exception :
+  name: Symbol
+
+defmethod print (o:OutputStream, e:UndefinedBindingException) :
+  print(o, "Undefined binding %_" % [name(e)])
+
+defn lookup (env:List<HashTable<Symbol, ?>>, name:Symbol) -> ? :
+  label return :
+    for frame in env do :
+      if key?(frame, name) :
+        return(frame[name])
+    throw(UndefinedBindingException(name))
+
+defn function (name:Symbol, params:List<Symbol>, body) -> Function :
+  defn apply (env:List<HashTable<Symbol, ?>>, args:List) :
+    val benv = add-bindings(env, params, args)
+    eval(benv, body)
+  Function(name, length(params), apply)
+
+defn function* (name:Symbol, params:List<Symbol>, body) -> Function :
+  val fun = Function(name, length(params), fn (env:List<HashTable<Symbol, ?>>, args:List): false)
+  defn apply (env:List<HashTable<Symbol, ?>>, args:List) :
+    val benv = add-bindings(env, params, args)
+    add-binding(benv, name, fun)
+    eval(benv, body)
+  set-apply(fun, apply)
+  fun
+
+defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
+  ;; println-all(["EVAL: " sexpr])
+  val res = 
+    match(sexpr) :
+      (i:Int) : i
+      (s:Symbol) : lookup(env, s)
+      (l:List) :
+        val op = head(l)
+        switch {op == _} :
+          `$do :
+            val fexp = l[1]
+            val fun  = eval(env, fexp) as Function
+            val args = map(eval{env, _}, tail(tail(l)))
+            check-arity(fun, args)
+            ;; println-all(["APPLYING " fun " ARGS " args])        
+            apply(fun)(env, args)
+          `$match :
+            val exprs    = map(eval{env, _}, l[1])
+            val branches = tail(tail(l))
+            label return :
+              for branch in branches do :
+                val bindings = branch[1]
+                val types    = map(eval{env, _}, branch[2])
+                val body     = branch[3]
+                if all?(fn (e, t): isa?(t)(e), exprs, types) :
+                  val nenv = add-bindings(env, bindings, exprs)
+                  return(eval(nenv, body))
+              fatal("No Branch Found")
+          `$def :
+            val name = l[1] as Symbol
+            val init = l[3]
+            add-binding(env, name, init)
+          `$or :
+            val t1 = eval(env, l[1])
+            val t2 = eval(env, l[2])
+            Type(`anon, fn (x) : isa?(t1)(x) or isa?(t2)(x), fn (x) : x)
+          `$and :
+            val t1 = eval(env, l[1])
+            val t2 = eval(env, l[2])
+            Type(`anon, fn (x) : isa?(t1)(x) and isa?(t2)(x), fn (x) : x)
+          `$quote :
+            l[1]
+          `$as? :
+            val e = eval(env, l[1])
+            val t = eval(env, l[2])
+            as!(t)(e)
+          `$let :
+            val body = l[1]
+            val nenv = add-frame(env)
+            eval(nenv, body)
+          `$set :
+            val name  = l[1] as Symbol
+            val value = l[2]
+            add-binding(env, name, value)
+          `$defvar :
+            val name = l[1] as Symbol
+            val init = l[3]
+            add-binding(env, name, init)
+          `$tuple :
+            to-tuple(tail(l))
+          `$defn :
+            val name = l[1] as Symbol
+            val fun = function(name, l[2] as List<Symbol>, l[5])
+            add-binding(env, name, fun)
+          `$defn* :
+            val name = l[1] as Symbol
+            val fun = function*(name, l[2] as List<Symbol>, l[5])
+            add-binding(env, name, fun)
+          `$fn :
+            function(`anon, l[1] as List<Symbol>, l[4])
+          `$fn :
+            function*(`anon, l[1] as List<Symbol>, l[4])
+          `$begin :
+            eval-begin(env, tail(l))
+          else :
+            false
+  ;; println-all(["EVAL -> " res])
+  res
+
+var top-env = List(HashTable<Symbol, ?>())
+add-binding(top-env, to-symbol("true"), true)
+add-binding(top-env, to-symbol("false"), false)
+add-binding(top-env, `plus, Function(`plus, plus))
+add-binding(top-env, `minus, Function(`minus, minus))
+add-binding(top-env, `times, Function(`times, times))
+add-binding(top-env, `divide, Function(`divide, divide))
+add-binding(top-env, `negate, Function(`negate, negate))
+add-binding(top-env, `sin, Function(`sin, sin))
+add-binding(top-env, `cos, Function(`cos, cos))
+add-binding(top-env, `tan, Function(`tan, tan))
+add-binding(top-env, `asin, Function(`asin, asin))
+add-binding(top-env, `acos, Function(`acos, acos))
+add-binding(top-env, `atan, Function(`atan, atan))
+add-binding(top-env, `atan2, Function(`atan2, atan2))
+add-binding(top-env, `pow, Function(`pow, pow))
+add-binding(top-env, `less?, Function(`less?, less?))
+add-binding(top-env, `equal?, Function(`equal?, equal?))
+val true-type = Type(`True, fn (x) : x is True, fn (x) : x as True)
+add-binding(top-env, `True, true-type)
+val false-type = Type(`False, fn (x) : x is False, fn (x) : x as False)
+add-binding(top-env, `False, false-type)
+add-binding(top-env, `Int, Type(`Int, fn (x) : x is Int, fn (x) : x as Int))
+add-binding(top-env, `Float, Type(`Float, fn (x) : x is Float, fn (x): x as Float))
+add-binding(top-env, `core/True, true-type)
+add-binding(top-env, `core/False, false-type)
+
+public defn eval (s:String, default) -> ? :
+  try :
+    val forms = read-all(s)
+    val es = unwrap-all(parse(forms))
+    val res = eval-begin(top-env, es)
+    println-all(["FORMS: " forms])
+    println-all(["EXP: "   es])
+    println-all(["EVAL: "  res])
+    res
+  catch (e:Exception) :
+    default
+    
+defn main () :
+  val s = command-line-arguments()[1]
+  eval(s, false)
+
+;; main()
+
+;;   $package $import $prefix-of $prefix $public $protected $deftype $defchild
+;;   $defmulti $defmethod $defmethod* $multi $new $as $as? $prim
+;;   $none $of $and $or $->
+;;   ---
+;;   $def $defn $do $match $branch $tuple $begin $fn $defvar $set $defn* $fn* 
+;;   $let $quote 
