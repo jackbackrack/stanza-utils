@@ -7,6 +7,9 @@ defpackage utils :
 
 ;;; GENERAL
 
+defmethod print (o:OutputStream, x:Function) :
+  print(o, "FN()")
+
 public defn ensure-index-in-bounds (xs:Lengthable, i:Int) :
   if i < 0 or i >= length(xs) :
     fatal("Index (%_) out of bounds." % [i])
