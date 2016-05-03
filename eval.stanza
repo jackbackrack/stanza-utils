@@ -231,10 +231,10 @@ val true-type = Type(`True, fn (x) : x is True, fn (x) : x as True)
 add-binding(top-env, `True, true-type)
 val false-type = Type(`False, fn (x) : x is False, fn (x) : x as False)
 add-binding(top-env, `False, false-type)
-add-binding(top-env, `Int, Type(`Int, fn (x) : x is Int, fn (x) : x as Int))
-add-binding(top-env, `Float, Type(`Float, fn (x) : x is Float, fn (x): x as Float))
 add-binding(top-env, `core/True, true-type)
 add-binding(top-env, `core/False, false-type)
+add-binding(top-env, `Int, Type(`Int, fn (x) : x is Int, fn (x) : x as Int))
+add-binding(top-env, `Float, Type(`Float, fn (x) : x is Float, fn (x): x as Float))
 
 ;; defn main () :
 ;;   val s = command-line-arguments()[1]
@@ -243,8 +243,8 @@ add-binding(top-env, `core/False, false-type)
 ;; main()
 
 ;;   $package $import $prefix-of $prefix $public $protected $deftype $defchild
-;;   $defmulti $defmethod $defmethod* $multi $new $as $as? $prim
+;;   $defmulti $defmethod $defmethod* $new $as $as? $prim
 ;;   $none $of $->
 ;;   ---
 ;;   $def $defn $do $match $branch $tuple $begin $fn $defvar $set $defn* $fn* 
-;;   $let $quote $and $or
+;;   $let $quote $and $or $multi
