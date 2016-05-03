@@ -1,11 +1,11 @@
-defpackage tst:
+defpackage eval:
   import core
   import math
   import collections
   import reader
   import stz/core-macros
 
-defn parse (form) -> ? :
+public defn parse (form) -> ? :
    with-syntax(core) :
       match-syntax(form) :
          (?es:#exp ... ?rest ...) :
@@ -19,7 +19,7 @@ defstruct Type :
 defmethod print (o:OutputStream, f:Type) :
   print-all(o, ["Type(" name(f) ")"])
 
-defstruct Function :
+public defstruct Function :
   name: Symbol
   arity: Int
   apply: (List<HashTable<Symbol, ?>>, List) -> ? with: (setter => set-apply)
@@ -41,43 +41,43 @@ defn check-arity (fun:Function, args:List) :
   if arity(fun) != length(args) :
     throw(WrongNumberArgumentsException(fun, args))
 
-defn Function (name:Symbol, f:() -> ?) :
+public defn Function (name:Symbol, f:() -> ?) :
   Function(name, 0, fn (env:List<HashTable<Symbol, ?>>, args:List) :
                       f())
 
-defn Function (name:Symbol, f:(?) -> ?) :
+public defn Function (name:Symbol, f:(?) -> ?) :
   Function(name, 1, fn (env:List<HashTable<Symbol, ?>>, args:List) :
                       f(args[0]))
 
-defn Function (name:Symbol, f:(?, ?) -> ?) :
+public defn Function (name:Symbol, f:(?, ?) -> ?) :
   Function(name, 2, fn (env:List<HashTable<Symbol, ?>>, args:List) :
                       f(args[0], args[1]))
 
-defn Function (name:Symbol, f:(?, ?, ?) -> ?) :
+public defn Function (name:Symbol, f:(?, ?, ?) -> ?) :
   Function(name, 3, fn (env:List<HashTable<Symbol, ?>>, args:List) :
                       f(args[0], args[1], args[2]))
 
-defn Function (name:Symbol, f:(?, ?, ?, ?) -> ?) :
+public defn Function (name:Symbol, f:(?, ?, ?, ?) -> ?) :
   Function(name, 4, fn (env:List<HashTable<Symbol, ?>>, args:List) :
                       f(args[0], args[1], args[2], args[3]))
 
-defn Function (name:Symbol, f:(?, ?, ?, ?, ?) -> ?) :
+public defn Function (name:Symbol, f:(?, ?, ?, ?, ?) -> ?) :
   Function(name, 5, fn (env:List<HashTable<Symbol, ?>>, args:List) :
                       f(args[0], args[1], args[2], args[3], args[4]))
 
-defn eval-begin (env:List<HashTable<Symbol, ?>>, l:List) -> ? :
+public defn eval-begin (env:List<HashTable<Symbol, ?>>, l:List) -> ? :
   defn* loop (elts:List) :
     val res = eval(env, head(elts))
     if empty?(tail(elts)) : res else : loop(tail(elts))
   loop(l)
 
-defn add-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) -> False :
+public defn add-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) -> False :
   head(env)[name] = value
 
-defn add-frame (env:List<HashTable<Symbol, ?>>) -> List<HashTable<Symbol, ?>> :
+public defn add-frame (env:List<HashTable<Symbol, ?>>) -> List<HashTable<Symbol, ?>> :
   cons(HashTable<Symbol, ?>(), env)
 
-defn add-bindings (env:List<HashTable<Symbol, ?>>, names:List<Symbol>, values:List) -> List<HashTable<Symbol, ?>> :
+public defn add-bindings (env:List<HashTable<Symbol, ?>>, names:List<Symbol>, values:List) -> List<HashTable<Symbol, ?>> :
   var nenv = add-frame(env)
   for (name in names, value in values) do :
     add-binding(nenv, name, value)
@@ -111,11 +111,16 @@ defn function* (name:Symbol, params:List<Symbol>, body) -> Function :
   set-apply(fun, apply)
   fun
 
-defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
-  ;; println-all(["EVAL: " sexpr])
+public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
+  println-all(["EVAL: " sexpr])
   val res = 
     match(sexpr) :
       (i:Int) : i
+      (d:Double) : d
+      (f:Float) : f
+      (t:True) : t
+      (f:False) : f
+      (s:String) : s
       (s:Symbol) : lookup(env, s)
       (l:List) :
         val op = head(l)
@@ -187,10 +192,10 @@ defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
             eval-begin(env, tail(l))
           else :
             false
-  ;; println-all(["EVAL -> " res])
+  println-all(["EVAL -> " res])
   res
 
-var top-env = List(HashTable<Symbol, ?>())
+public var top-env = List(HashTable<Symbol, ?>())
 add-binding(top-env, to-symbol("true"), true)
 add-binding(top-env, to-symbol("false"), false)
 add-binding(top-env, `plus, Function(`plus, plus))
@@ -229,9 +234,9 @@ public defn eval (s:String, default) -> ? :
   catch (e:Exception) :
     default
     
-defn main () :
-  val s = command-line-arguments()[1]
-  eval(s, false)
+;; defn main () :
+;;   val s = command-line-arguments()[1]
+;;   eval(s, false)
 
 ;; main()
 
