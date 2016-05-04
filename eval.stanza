@@ -11,7 +11,7 @@ public defn parse (form) -> ? :
          (?es:#exp ... ?rest ...) :
             es          
 
-defstruct Type :
+public defstruct Type :
   name: Symbol
   isa?: (?) -> True|False
   as!: (?) -> ?
@@ -106,7 +106,7 @@ defmethod print (o:OutputStream, e:UnknownMultiException) :
   print(o, "Unknown Multi Found")
 
 public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
-  println-all(["EVAL: " sexpr])
+  ;; println-all(["EVAL: " sexpr])
   val res = 
     match(sexpr) :
       (i:Int) : i
@@ -192,7 +192,7 @@ public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
             eval-begin(env, tail(l))
           else :
             false
-  println-all(["EVAL -> " res])
+  ;; println-all(["EVAL -> " res])
   res
 
 public defn eval (s:String, default) -> ? :
@@ -227,14 +227,18 @@ add-binding(top-env, `pow, pow)
 add-binding(top-env, `less?,  less?)
 add-binding(top-env, `equal?,  equal?)
 
-val true-type = Type(`True, fn (x) : x is True, fn (x) : x as True)
-add-binding(top-env, `True, true-type)
-val false-type = Type(`False, fn (x) : x is False, fn (x) : x as False)
-add-binding(top-env, `False, false-type)
-add-binding(top-env, `core/True, true-type)
-add-binding(top-env, `core/False, false-type)
-add-binding(top-env, `Int, Type(`Int, fn (x) : x is Int, fn (x) : x as Int))
-add-binding(top-env, `Float, Type(`Float, fn (x) : x is Float, fn (x): x as Float))
+public val TrueT = Type(`True, fn (x) : x is True, fn (x) : x as True)
+add-binding(top-env, `True, TrueT)
+public val FalseT = Type(`False, fn (x) : x is False, fn (x) : x as False)
+add-binding(top-env, `False, FalseT)
+add-binding(top-env, `core/True, TrueT)
+add-binding(top-env, `core/False, FalseT)
+public val IntT = Type(`Int, fn (x) : x is Int, fn (x) : x as Int)
+add-binding(top-env, `Int, IntT)
+public val FloatT = Type(`Float, fn (x) : x is Float, fn (x): x as Float)
+add-binding(top-env, `Float, FloatT)
+public val DoubleT = Type(`Double, fn (x) : x is Double, fn (x): x as Double)
+add-binding(top-env, `Double, DoubleT)
 
 ;; defn main () :
 ;;   val s = command-line-arguments()[1]
