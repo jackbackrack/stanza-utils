@@ -195,50 +195,49 @@ public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
   ;; println-all(["EVAL -> " res])
   res
 
-public defn eval (s:String, default) -> ? :
-  try :
-    val forms = read-all(s)
-    val es = unwrap-all(parse(forms))
-    val res = eval-begin(top-env, es)
-    println-all(["FORMS: " forms])
-    println-all(["EXP: "   es])
-    println-all(["EVAL: "  res])
-    res
-  catch (e:Exception) :
-    println-all(["INTERPRETER EXCEPTION: " e])
-    default
+public defn eval (s:String) -> ? :
+  val forms = read-all(s)
+  val es = unwrap-all(parse(forms))
+  val res = eval-begin(top-env, es)
+  ;; println-all(["FORMS: " forms])
+  ;; println-all(["EXP: "   es])
+  ;; println-all(["EVAL: "  res])
+  res
     
-public var top-env = List(HashTable<Symbol, ?>())
-add-binding(top-env, to-symbol("true"), true)
-add-binding(top-env, to-symbol("false"), false)
-add-binding(top-env, `plus, plus)
-add-binding(top-env, `minus, minus)
-add-binding(top-env, `times, times)
-add-binding(top-env, `divide, divide)
-add-binding(top-env, `negate, negate)
-add-binding(top-env, `sin, sin)
-add-binding(top-env, `cos, cos)
-add-binding(top-env, `tan, tan)
-add-binding(top-env, `asin, asin)
-add-binding(top-env, `acos, acos)
-add-binding(top-env, `atan, atan)
-add-binding(top-env, `atan2, atan2)
-add-binding(top-env, `pow, pow)
-add-binding(top-env, `less?,  less?)
-add-binding(top-env, `equal?,  equal?)
-
 public val TrueT = Type(`True, fn (x) : x is True, fn (x) : x as True)
-add-binding(top-env, `True, TrueT)
 public val FalseT = Type(`False, fn (x) : x is False, fn (x) : x as False)
-add-binding(top-env, `False, FalseT)
-add-binding(top-env, `core/True, TrueT)
-add-binding(top-env, `core/False, FalseT)
 public val IntT = Type(`Int, fn (x) : x is Int, fn (x) : x as Int)
-add-binding(top-env, `Int, IntT)
 public val FloatT = Type(`Float, fn (x) : x is Float, fn (x): x as Float)
-add-binding(top-env, `Float, FloatT)
 public val DoubleT = Type(`Double, fn (x) : x is Double, fn (x): x as Double)
-add-binding(top-env, `Double, DoubleT)
+
+public var top-env = List(HashTable<Symbol, ?>())
+
+public defn eval-top-env () :
+  clear(top-env[0])
+  add-binding(top-env, to-symbol("true"), true)
+  add-binding(top-env, to-symbol("false"), false)
+  add-binding(top-env, `plus, plus)
+  add-binding(top-env, `minus, minus)
+  add-binding(top-env, `times, times)
+  add-binding(top-env, `divide, divide)
+  add-binding(top-env, `negate, negate)
+  add-binding(top-env, `sin, sin)
+  add-binding(top-env, `cos, cos)
+  add-binding(top-env, `tan, tan)
+  add-binding(top-env, `asin, asin)
+  add-binding(top-env, `acos, acos)
+  add-binding(top-env, `atan, atan)
+  add-binding(top-env, `atan2, atan2)
+  add-binding(top-env, `pow, pow)
+  add-binding(top-env, `less?,  less?)
+  add-binding(top-env, `equal?,  equal?)
+  add-binding(top-env, `True, TrueT)
+  add-binding(top-env, `False, FalseT)
+  add-binding(top-env, `core/True, TrueT)
+  add-binding(top-env, `core/False, FalseT)
+  add-binding(top-env, `Int, IntT)
+  add-binding(top-env, `Float, FloatT)
+  add-binding(top-env, `Double, DoubleT)
 
 ;; defn main () :
 ;;   val s = command-line-arguments()[1]
