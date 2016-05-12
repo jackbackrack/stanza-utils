@@ -5,26 +5,25 @@ defpackage file-system :
   import collections
   import math
 
-lostanza deftype DirEntryStruct :
-  file-number:int
-  record-length0:byte
-  record-length1:byte
-  type:byte
-  name-length:byte
-  name:byte ...
-
 extern malloc: (long) -> ptr<byte>
 extern getcwd: (ptr<byte>, int) -> ptr<byte>
 extern printf: (ptr<byte>, ? ...) -> int
 extern opendir: (ptr<byte>) -> ptr<?>
-extern readdir: (ptr<?>) -> ptr<DirEntryStruct>
+extern readdirent: (ptr<?>, ptr<?>) -> int
 extern closedir: (ptr<?>) -> int
 
 lostanza deftype Dir :
   value: ptr<?>
 
 lostanza deftype DirEntry :
-  value: ptr<DirEntryStruct>
+  file-number:int
+  record-length:int
+  type:byte
+  name-length:byte
+  name:ptr<byte>
+
+lostanza defn DirEntry () -> ref<?> :
+  return new DirEntry{0, 0, 0 as byte, 0 as byte, 0L as ptr<byte>}
 
 lostanza defn opendir (pathname:ref<String>) -> ref<Dir> :
   val ptr = call-c opendir(addr!(pathname.chars))
@@ -34,9 +33,12 @@ lostanza defn closedir (dir:ref<Dir>) -> ref<False> :
   call-c closedir(dir.value)
   return false
 
-lostanza defn readdir (dir:ref<Dir>) -> ref<DirEntry> :
-  val ptr = call-c readdir(dir.value)
-  return new DirEntry{ptr}
+lostanza defn readdir (dir:ref<Dir>, dirent:ref<DirEntry>) -> ref<True|False> :
+  val res = call-c readdirent(dir.value, addr!([dirent]))
+  if res == 0L :
+    return true
+  else :
+    return false
 
 public lostanza defn get-cwd () -> ref<String> :
   val bytes = call-c malloc(256)
@@ -44,27 +46,20 @@ public lostanza defn get-cwd () -> ref<String> :
   return String(res)
 
 lostanza defn entry-name (ent:ref<DirEntry>) -> ref<String> :
-  val entry = ent.value
-  return String(addr(entry.name))
+  return String(ent.name)
 
 lostanza defn entry-dir? (ent:ref<DirEntry>) -> ref<True|False> :
-  val entry = ent.value
-  if entry.type == 4L :
-    return true
-  else :
-    return false
-
-lostanza defn entry-null? (dir:ref<DirEntry>) -> ref<True|False> :
-  if dir.value == (0L as ptr<?>) :
+  if ent.type == 4L :
     return true
   else :
     return false
 
 public defn directory-entries (pathname:String) -> Seq<String> :
   generate<String> :
+    val ent = DirEntry()
     defn* loop (dir) :
-      val ent = readdir(dir)
-      if entry-null?(ent) :
+      val closed? = readdir(dir, ent)
+      if closed? :
         closedir(dir)
       else :
         yield(string-join([entry-name(ent) ("/" when entry-dir?(ent) else "")]))
