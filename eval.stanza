@@ -147,7 +147,7 @@ public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
               throw(UnknownMultiException())
           `$def :
             val name = l[1] as Symbol
-            val init = l[3]
+            val init = eval(env, l[3])
             add-binding(env, name, init)
           `$or :
             val t1 = eval(env, l[1])
@@ -217,6 +217,7 @@ public defn eval-top-env () :
   clear(top-env[0])
   add-binding(top-env, to-symbol("true"), true)
   add-binding(top-env, to-symbol("false"), false)
+  add-binding(top-env, `println, println)
   add-binding(top-env, `plus, plus)
   add-binding(top-env, `minus, minus)
   add-binding(top-env, `times, times)
@@ -232,6 +233,10 @@ public defn eval-top-env () :
   add-binding(top-env, `pow, pow)
   add-binding(top-env, `less?,  less?)
   add-binding(top-env, `equal?,  equal?)
+  add-binding(top-env, `to-tuple, to-tuple)
+  add-binding(top-env, `do, do)
+  add-binding(top-env, `map, map)
+  add-binding(top-env, `seq, seq)
   add-binding(top-env, `True, TrueT)
   add-binding(top-env, `False, FalseT)
   add-binding(top-env, `core/True, TrueT)
