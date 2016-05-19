@@ -7,6 +7,12 @@ defpackage utils :
 
 ;;; GENERAL
 
+protected extern srand: (int) -> int
+
+public lostanza defn srand (i:ref<Int>) -> ref<False> :
+  call-c srand(i.value)
+  return false
+
 public val FLOAT-MIN = -1.0e32f
 public val FLOAT-MAX =  1.0e32f
 
