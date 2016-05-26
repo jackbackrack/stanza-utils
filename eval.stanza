@@ -243,6 +243,7 @@ public defn eval-top-env () :
   add-binding(top-env, `join, join)
   add-binding(top-env, `map, map)
   add-binding(top-env, `seq, seq)
+  add-binding(top-env, `core/Range, core/Range)
   add-binding(top-env, `True, TrueT)
   add-binding(top-env, `False, FalseT)
   add-binding(top-env, `core/True, TrueT)
