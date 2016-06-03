@@ -28,6 +28,13 @@ public defn eval-begin (env:List<HashTable<Symbol, ?>>, l:List) -> ? :
 public defn add-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) -> False :
   head(env)[name] = value
 
+public defn set-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) -> False :
+  label return:
+    for frame in env do :
+      if key?(frame, name) :
+        frame[name] = value
+        return(false)
+
 public defn add-frame (env:List<HashTable<Symbol, ?>>) -> List<HashTable<Symbol, ?>> :
   cons(HashTable<Symbol, ?>(), env)
 
@@ -169,11 +176,11 @@ public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
             eval(nenv, body)
           `$set :
             val name  = l[1] as Symbol
-            val value = l[2]
-            add-binding(env, name, value)
+            val value = eval(env, l[2])
+            set-binding(env, name, value)
           `$defvar :
             val name = l[1] as Symbol
-            val init = l[3]
+            val init = eval(env, l[3])
             add-binding(env, name, init)
           `$tuple :
             to-tuple(seq(eval{env, _}, tail(l)))
@@ -217,9 +224,12 @@ public defn eval-top-env () :
   clear(top-env[0])
   add-binding(top-env, to-symbol("true"), true)
   add-binding(top-env, to-symbol("false"), false)
+  add-binding(top-env, `print, print)
+  add-binding(top-env, `println, println)
+  add-binding(top-env, `print-all, print-all)
+  add-binding(top-env, `println-all, println-all)
   add-binding(top-env, `get, get)
   add-binding(top-env, `set, set)
-  add-binding(top-env, `println, println)
   add-binding(top-env, `to-float, to-float)
   add-binding(top-env, `to-double, to-double)
   add-binding(top-env, `to-int, to-int)
