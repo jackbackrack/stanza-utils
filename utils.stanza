@@ -13,6 +13,20 @@ public lostanza defn srand (i:ref<Int>) -> ref<False> :
   call-c srand(i.value)
   return false
 
+public defn modulo (x:Float, y:Float) -> Float :
+  val d = x / y
+  val f = d - to-float(to-int(d))
+  y * f
+
+public defn rndf () -> Float :
+  val n = 1000000
+  to-float(rand() % n) / to-float(n)
+
+public defn rndf (lo:Float, hi:Float) -> Float :
+  val r = rndf()
+  val d = hi - lo
+  lo + (r % d)
+
 public val FLOAT-MIN = -1.0e32f
 public val FLOAT-MAX =  1.0e32f
 
