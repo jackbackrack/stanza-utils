@@ -149,51 +149,51 @@ public defn CharBuffer (capacity:Int, fill:(CharArray, Int) -> Int, avail?: () -
 public defn CharBuffer (capacity:Int, stream:PollableInputStream) :
   CharBuffer(capacity, fill{_, 0 to _, stream}, avail?{stream})
 
-public deftype BufferedInputStream <: PollableInputStream
-public defmulti peek? (s:BufferedInputStream) -> Char|False
-public defmulti buffer (s:BufferedInputStream) -> CharBuffer
+public deftype MyBufferedInputStream <: PollableInputStream
+public defmulti peek? (s:MyBufferedInputStream) -> Char|False
+public defmulti buffer (s:MyBufferedInputStream) -> CharBuffer
 
-defmethod peek? (x:BufferedInputStream) :
+defmethod peek? (x:MyBufferedInputStream) :
   peek?(buffer(x))
 
-defmethod avail? (x:BufferedInputStream) :
+defmethod avail? (x:MyBufferedInputStream) :
   avail?(buffer(x))
 
-defmethod get-char (x:BufferedInputStream) :
+defmethod get-char (x:MyBufferedInputStream) :
   get-char(buffer(x))
 
-public defn BufferedInputStream (buf:CharBuffer) :
-  new BufferedInputStream :
+public defn MyBufferedInputStream (buf:CharBuffer) :
+  new MyBufferedInputStream :
     defmethod buffer (this) : buf
 
-public defn BufferedInputStream (stream:PollableInputStream, size:Int) :
-  BufferedInputStream(CharBuffer(size, stream))
+public defn MyBufferedInputStream (stream:PollableInputStream, size:Int) :
+  MyBufferedInputStream(CharBuffer(size, stream))
 
-public defn BufferedInputStream (size:Int, fill:(CharArray, Int) -> Int, avail?: () -> True|False) :
-  BufferedInputStream(CharBuffer(size, fill, avail?))
+public defn MyBufferedInputStream (size:Int, fill:(CharArray, Int) -> Int, avail?: () -> True|False) :
+  MyBufferedInputStream(CharBuffer(size, fill, avail?))
 
-public defn get-char! (s:BufferedInputStream) -> Char :
+public defn get-char! (s:MyBufferedInputStream) -> Char :
   match(get-char(s)) :
     (f:False): fail()
     (c:Char): c
 
-public defn get-chars! (s:BufferedInputStream, n:Int) -> String :
+public defn get-chars! (s:MyBufferedInputStream, n:Int) -> String :
   val buffer = StringBuffer()
   for i in 0 to n do :
     add(buffer, get-char!(s))
   to-string(buffer)
 
-public defn get-chars-while (s:BufferedInputStream, f:(Char) -> True|False) -> String :
+public defn get-chars-while (s:MyBufferedInputStream, f:(Char) -> True|False) -> String :
   val buffer = StringBuffer()
   while peek?(s) is Char and f(peek?(s) as Char) :
     add(buffer, get-char!(s))
   to-string(buffer)
 
-public defn parse-int (s:BufferedInputStream) -> Int :
+public defn parse-int (s:MyBufferedInputStream) -> Int :
   val chars = get-chars-while(s, digit?)
   to-int(chars) as Int
 
-public defn expect-char (s:BufferedInputStream, c:Char) -> False :
+public defn expect-char (s:MyBufferedInputStream, c:Char) -> False :
   val gc = get-char(s)
   if gc != c: fatal("Expected %_ got %_" % [c, gc])
 

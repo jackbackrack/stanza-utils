@@ -59,7 +59,7 @@ public lostanza defn close (s:ref<Socket>) -> ref<False> :
 public lostanza defn socket-fd (s:ref<Socket>) -> ref<Int> :
   return new Int{s.fd}
 
-public deftype BufferedSocket <: BufferedInputStream & OutputStream
+public deftype BufferedSocket <: MyBufferedInputStream & OutputStream
 
 public defn BufferedSocket (fd:Int) :
   val sock = Socket(fd)
@@ -129,7 +129,7 @@ public lostanza defn Client (hostname:ref<String>, port:ref<Int>) -> ref<Buffere
   if fd < 0 : throw(SocketOpenException(hostname, port, linux-error-msg()))
   return BufferedSocket(new Int{fd})
 
-public deftype NullClient <: BufferedInputStream & OutputStream
+public deftype NullClient <: MyBufferedInputStream & OutputStream
 public defn NullClient () :
   new NullClient :
     defmethod avail? (this) : false
