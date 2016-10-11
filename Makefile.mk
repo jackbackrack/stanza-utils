@@ -1,3 +1,7 @@
+stanza_utils_all: ${GEN}/eval.pkg ${GEN}/file-system.pkg ${GEN}/socket.pkg ${GEN}/utils.pkg 
+
+ALL_PKG_DEPS += stanza_utils_all
+
 ${GEN}/eval.pkg: stanza-utils/eval.stanza 
 	stanza $< $(STZ_FLAGS) -pkg ${GEN}
 

@@ -1,5 +1,6 @@
 GEN = build
 STZ_FLAGS = -pkg-path ${GEN}
+ALL_DEPS = 
 
 STANZADIR = `python stanza-utils/stanza-install-dir.py`
 STZ_COMPILER_MAIN = ${STANZADIR}/compiler/stz-main.stanza
