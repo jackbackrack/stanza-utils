@@ -31,11 +31,11 @@ public defn ensure-index-in-bounds (xs:Lengthable, i:Int) :
   if i < 0 or i >= length(xs) :
     fatal("Index (%_) out of bounds." % [i])
       
-public defn range-bound (s:Lengthable, r:Range) -> [Int, Int] :
-  match(end(r), inclusive?(r)) :
-    (e:Int, i:True) : [start(r), e + 1]
-    (e:Int, i:False) : [start(r), e]
-    (e:False, i) : [start(r), length(s)]
+;; public defn range-bound (s:Lengthable, r:Range) -> [Int, Int] :
+;;   match(end(r), inclusive?(r)) :
+;;     (e:Int, i:True) : [start(r), e + 1]
+;;     (e:Int, i:False) : [start(r), e]
+;;     (e:False, i) : [start(r), length(s)]
 
 public defn default<T> (v:T|False, d:T) -> T :
   match(v) :

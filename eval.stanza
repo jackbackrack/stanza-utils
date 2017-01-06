@@ -5,11 +5,16 @@ defpackage eval:
   import reader
   import stz/core-macros
 
+;; public defn parse (form) -> ? :
+;;    #with-syntax(core) :
+;;       match-syntax(form) :
+;;          (?es:#exp ... ?rest ...) :
+;;             es          
+
 public defn parse (form) -> ? :
-   with-syntax(core) :
-      match-syntax(form) :
-         (?es:#exp ... ?rest ...) :
-            es          
+  match-syntax[core](form) :
+    (?es:#exp ... ?rest ...) :
+       es          
 
 public defstruct Type :
   name: Symbol
@@ -28,12 +33,12 @@ public defn eval-begin (env:List<HashTable<Symbol, ?>>, l:List) -> ? :
 public defn add-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) -> False :
   head(env)[name] = value
 
-public defn set-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) -> False :
+public defn set-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) :
   label return:
     for frame in env do :
       if key?(frame, name) :
         frame[name] = value
-        return(false)
+        return()
 
 public defn add-frame (env:List<HashTable<Symbol, ?>>) -> List<HashTable<Symbol, ?>> :
   cons(HashTable<Symbol, ?>(), env)
@@ -56,7 +61,7 @@ defmethod print (o:OutputStream, e:UndefinedBindingException) :
   print(o, "Undefined binding %_" % [name(e)])
 
 defn lookup (env:List<HashTable<Symbol, ?>>, name:Symbol) -> ? :
-  label return :
+  label<?> return :
     for frame in env do :
       if key?(frame, name) :
         return(frame[name])
@@ -135,7 +140,7 @@ public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
           `$match :
             val exprs    = map(eval{env, _}, l[1])
             val branches = tail(tail(l))
-            label return :
+            label<?> return :
               for branch in branches do :
                 val bindings = branch[1]
                 val types    = map(eval{env, _}, branch[2])
