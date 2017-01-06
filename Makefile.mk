@@ -1,5 +1,7 @@
 stanza_utils_all: ${GEN}/eval.pkg ${GEN}/file-system.pkg ${GEN}/socket.pkg ${GEN}/utils.pkg 
 
+LIBS += ${GEN}/socket.o ${GEN}/file-system.o
+
 ALL_PKG_DEPS += stanza_utils_all
 
 ${GEN}/eval.pkg: stanza-utils/eval.stanza 
@@ -8,7 +10,7 @@ ${GEN}/eval.pkg: stanza-utils/eval.stanza
 ${GEN}/file-system.o: stanza-utils/file-system.c
 	cc $(CFLAGS) -c stanza-utils/file-system.c -o $@
 
-${GEN}/file-system.pkg: stanza-utils/file-system.stanza  utils.pkg 
+${GEN}/file-system.pkg: stanza-utils/file-system.stanza  ${GEN}/utils.pkg 
 	stanza $< $(STZ_FLAGS)
 
 ${GEN}/socket.o: stanza-utils/socket.c
