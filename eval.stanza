@@ -266,6 +266,7 @@ public defn eval-top-env () :
   add-binding(top-env, `symbol-join, symbol-join)
   add-binding(top-env, `core/Range, core/Range)
   add-binding(top-env, `core/KeyValue, core/KeyValue)
+  add-binding(top-env, `core/dynamic-wind, core/dynamic-wind)
   add-binding(top-env, `True, TrueT)
   add-binding(top-env, `False, FalseT)
   add-binding(top-env, `core/True, TrueT)
