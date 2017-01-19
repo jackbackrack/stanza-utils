@@ -1,6 +1,6 @@
 stanza_utils_all: ${GEN}/eval.pkg ${GEN}/file-system.pkg ${GEN}/socket.pkg  ${GEN}/process.pkg ${GEN}/utils.pkg 
 
-LIBS += ${GEN}/socket.o ${GEN}/file-system.o
+LIBS += ${GEN}/socket.o ${GEN}/file-system.o ${GEN}/process.o
 
 ALL_PKG_DEPS += stanza_utils_all
 
@@ -25,6 +25,6 @@ ${GEN}/process.o: stanza-utils/process.c
 ${GEN}/process.pkg: stanza-utils/process.stanza ${GEN}/process.o ${GEN}/utils.pkg 
 	stanza $< $(STZ_FLAGS)
 
-${GEN}/utils.pkg: stanza-utils/utils.stanza ${GEN}/file-system.o 
+${GEN}/utils.pkg: stanza-utils/utils.stanza ${GEN}/file-system.o ${GEN}/socket.o ${GEN}/process.o 
 	stanza $< $(STZ_FLAGS)
 
