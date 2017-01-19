@@ -1,5 +1,7 @@
 stanza_utils_all: ${GEN}/eval.pkg ${GEN}/file-system.pkg ${GEN}/socket.pkg  ${GEN}/process.pkg ${GEN}/utils.pkg 
 
+LIBS += ${GEN}/socket.o ${GEN}/file-system.o
+
 ALL_PKG_DEPS += stanza_utils_all
 
 ${GEN}/eval.pkg: stanza-utils/eval.stanza 
