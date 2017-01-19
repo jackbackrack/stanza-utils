@@ -195,15 +195,16 @@ public defn expect-char (s:MyBufferedInputStream, c:Char) -> False :
   if gc != c: fatal("Expected %_ got %_" % [c, gc])
 
 ;; TODO: SHOULD BE MERGED BACK IN
+public defn stream (s:FileInputStream) :
+  generate<Char> :
+    let loop () :
+      match(get-char(s)) :
+        (c:Char) :
+          yield(c)
+          loop()
+        (c:False) : false
+    close(s)
+
+;; TODO: SHOULD BE MERGED BACK IN
 public defn slurp (s:FileInputStream) :
-   try :
-      val buffer = StringBuffer()
-      defn* loop () :
-         match(get-char(s)) :
-            (c:Char) :
-               add(buffer, c)
-               loop()
-            (c:False) : false
-      loop()
-      to-string(buffer)
-   finally : close(s)
+  String(stream(s))
