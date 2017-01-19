@@ -1,0 +1,34 @@
+;; See license.txt for details about licensing.
+
+defpackage process :
+  import core
+  import collections
+  import utils
+
+lostanza deftype C-Process :
+  in: ptr<?>
+  out: ptr<?>
+  err: ptr<?>
+
+extern malloc: (long) -> ptr<?>
+extern free: (ptr<?>) -> int
+extern open_process: (ptr<ptr<byte>>) -> ptr<C-Process>
+
+public defstruct Process :
+  in:  FileOutputStream
+  out: FileInputStream
+  err: FileInputStream
+
+public lostanza defn Process (args:ref<Tuple<String>>) -> ref<Process> :
+  val ca = call-c malloc((args.length + 1) * sizeof(long)) as ptr<ptr<byte>>
+  for (var i:int = 0, i < args.length, i = i + 1) :
+    ca[i] = addr!(get(args, new Int{i}).chars)
+  ca[args.length] = 0 as long as ptr<byte>
+  val cp = call-c open_process(ca)
+  call-c free(ca)
+  val res = Process(new FileOutputStream{cp.in, 1},
+                    new FileInputStream{cp.out, 1},
+                    new FileInputStream{cp.err, 1})
+  call-c free(cp)
+  return res
+  
