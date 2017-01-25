@@ -4,7 +4,7 @@ LIBS += ${GEN}/socket.o ${GEN}/file-system.o ${GEN}/process.o
 
 ALL_PKG_DEPS += stanza_utils_all
 
-${GEN}/eval.pkg: stanza-utils/eval.stanza 
+${GEN}/eval.pkg: stanza-utils/eval.stanza ${GEN}/utils.pkg 
 	stanza $< $(STZ_FLAGS)
 
 ${GEN}/file-system.o: stanza-utils/file-system.c

@@ -4,6 +4,7 @@ defpackage eval:
   import collections
   import reader
   import stz/core-macros
+  import utils
 
 ;; public defn parse (form) -> ? :
 ;;    #with-syntax(core) :
@@ -158,9 +159,12 @@ public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
             else :
               throw(UnknownMultiException())
           `$def :
-            val name = l[1] as Symbol
-            val init = eval(env, l[3])
-            add-binding(env, name, init)
+            val inits = eval(env, l[3])
+            match(l[1]):
+            (name:Symbol) : add-binding(env, name, inits)
+            (names:List) :
+              for (name in tail(names), init in inits) do:
+                add-binding(env, name, init)
           `$or :
             val t1 = eval(env, l[1])
             val t2 = eval(env, l[2])
@@ -230,10 +234,16 @@ public defn eval-top-env () :
   add-binding(top-env, to-symbol("true"), true)
   add-binding(top-env, to-symbol("false"), false)
   add-binding(top-env, `PI-F, PI-F)
+  add-binding(top-env, `FLOAT-MAX, FLOAT-MAX)
+  add-binding(top-env, `FLOAT-MIN, FLOAT-MIN)
+  add-binding(top-env, `String, String)
   add-binding(top-env, `print, print)
   add-binding(top-env, `println, println)
   add-binding(top-env, `print-all, print-all)
   add-binding(top-env, `println-all, println-all)
+  add-binding(top-env, `next, next)
+  add-binding(top-env, `peek, peek)
+  add-binding(top-env, `empty?, empty?)
   add-binding(top-env, `min, min)
   add-binding(top-env, `max, max)
   add-binding(top-env, `get, get)
@@ -260,6 +270,11 @@ public defn eval-top-env () :
   add-binding(top-env, `do, do)
   add-binding(top-env, `join, join)
   add-binding(top-env, `cat, cat)
+  add-binding(top-env, `fork, fork)
+  add-binding(top-env, `mask, mask)
+  add-binding(top-env, `indices, indices)
+  add-binding(top-env, `chunk, chunk)
+  add-binding(top-env, `matches, matches)
   add-binding(top-env, `cat-all, cat-all)
   add-binding(top-env, `map, map)
   add-binding(top-env, `seq, seq)

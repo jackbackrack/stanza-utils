@@ -7,12 +7,6 @@ defpackage utils :
 
 ;;; GENERAL
 
-protected extern srand: (int) -> int
-
-public lostanza defn srand (i:ref<Int>) -> ref<False> :
-  call-c srand(i.value)
-  return false
-
 public defn modulo (x:Float, y:Float) -> Float :
   val d = x / y
   val f = d - to-float(to-int(d))
@@ -208,3 +202,38 @@ public defn stream (s:FileInputStream) :
 ;; TODO: SHOULD BE MERGED BACK IN
 public defn slurp (s:FileInputStream) :
   String(stream(s))
+
+public defn matches (str:Seqable<Char>, pat:String) -> Seq<Int> :
+  val matches = Array<True|False>(length(pat) + 1)
+  val len = length(pat)
+  for i in 0 through len do :
+    matches[i] = i == 0
+  generate<Int> :
+    for (e in str, j in 0 to false) do :
+      for i in len to 0 by -1  do :
+        matches[i] = (e == pat[i - 1]) and matches[i - 1]
+      if matches[len] : yield(j)
+
+public defn mask (indices:Seqable<Int>) -> Seq<True|False> :
+  generate<True|False> :
+    var j = 0
+    for i in indices do :
+      while j <= i :
+        yield(i == j)
+        j = j + 1  
+
+public defn indices (mask:Seqable<True|False>) -> Seq<Int> :
+  generate<Int> :
+    for (e in mask, j in 0 to false) do :
+      if e : yield(j)
+
+public defn chunk<?T> (asrc:Seqable<?T>, amask:Seqable<True|False>) -> Seq<Seq<T>> :
+  val [src, mask] = [to-seq(asrc), to-seq(amask)]
+  generate<Seq<T>> :
+    while not empty?(src) :
+      val gen = generate<T> :
+        let loop () :
+          if not empty?(src) :
+            yield(next(src))
+            if empty?(mask) or next(mask) == false : loop()
+      yield(gen)
