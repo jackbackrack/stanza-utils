@@ -5,7 +5,20 @@ defpackage file-system :
   import collections
   import math
 
+public defn split-pathname (pathname:String) -> [String, String]:
+  val index = last-index-of-char(pathname, '/')
+  match(index) :
+    (f:False) : ["", pathname]
+    (i:Int)   : [pathname[0 to (i + 1)], pathname[(i + 1) to false]]
+
+public defn dir-name (pathname:String) -> String :
+  split-pathname(pathname)[0]
+
+public defn base-name (pathname:String) -> String :
+  split-pathname(pathname)[1]
+
 extern malloc: (long) -> ptr<byte>
+extern free: (ptr<byte>) -> int
 extern getcwd: (ptr<byte>, int) -> ptr<byte>
 extern printf: (ptr<byte>, ? ...) -> int
 extern opendir: (ptr<byte>) -> ptr<?>
@@ -25,18 +38,31 @@ lostanza deftype DirEntry :
 lostanza defn DirEntry () -> ref<?> :
   return new DirEntry{0, 0, 0 as byte, 0 as byte, 0L as ptr<byte>}
 
+lostanza defn open? (dir:ref<Dir>) -> ref<True|False> :
+  if (dir.value as long) == 0L :
+    return false
+  else :
+    return true
+
 lostanza defn opendir (pathname:ref<String>) -> ref<Dir> :
   val ptr = call-c opendir(addr!(pathname.chars))
   return new Dir{ptr}
 
+public defn directory? (pathname:String) -> True|False :
+  open?(opendir(pathname))
+
 lostanza defn closedir (dir:ref<Dir>) -> ref<False> :
-  call-c closedir(dir.value)
+  if open?(dir) == true :
+    call-c closedir(dir.value)
   return false
 
 lostanza defn readdir (dir:ref<Dir>, dirent:ref<DirEntry>) -> ref<True|False> :
-  val res = call-c readdirent(dir.value, addr!([dirent]))
-  if res == 0L :
-    return true
+  if open?(dir) == true :
+    val res = call-c readdirent(dir.value, addr!([dirent]))
+    if res == 0L :
+      return true
+    else :
+      return false
   else :
     return false
 

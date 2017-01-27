@@ -5,6 +5,7 @@ defpackage eval:
   import reader
   import stz/core-macros
   import utils
+  import file-system
 
 ;; public defn parse (form) -> ? :
 ;;    #with-syntax(core) :
@@ -233,6 +234,7 @@ public defn eval-top-env () :
   clear(top-env[0])
   add-binding(top-env, to-symbol("true"), true)
   add-binding(top-env, to-symbol("false"), false)
+  add-binding(top-env, `core/complement, core/complement)
   add-binding(top-env, `PI-F, PI-F)
   add-binding(top-env, `FLOAT-MAX, FLOAT-MAX)
   add-binding(top-env, `FLOAT-MIN, FLOAT-MIN)
@@ -241,6 +243,7 @@ public defn eval-top-env () :
   add-binding(top-env, `println, println)
   add-binding(top-env, `print-all, print-all)
   add-binding(top-env, `println-all, println-all)
+  add-binding(top-env, `length, length)
   add-binding(top-env, `next, next)
   add-binding(top-env, `peek, peek)
   add-binding(top-env, `empty?, empty?)
@@ -265,12 +268,15 @@ public defn eval-top-env () :
   add-binding(top-env, `atan2, atan2)
   add-binding(top-env, `pow, pow)
   add-binding(top-env, `less?,  less?)
+  add-binding(top-env, `greater?,  greater?)
   add-binding(top-env, `equal?,  equal?)
   add-binding(top-env, `to-tuple, to-tuple)
   add-binding(top-env, `do, do)
   add-binding(top-env, `join, join)
   add-binding(top-env, `cat, cat)
   add-binding(top-env, `fork, fork)
+  add-binding(top-env, `reduce, reduce)
+  add-binding(top-env, `filter, filter)
   add-binding(top-env, `mask, mask)
   add-binding(top-env, `indices, indices)
   add-binding(top-env, `chunk, chunk)
@@ -282,6 +288,8 @@ public defn eval-top-env () :
   add-binding(top-env, `core/Range, core/Range)
   add-binding(top-env, `core/KeyValue, core/KeyValue)
   add-binding(top-env, `core/dynamic-wind, core/dynamic-wind)
+  add-binding(top-env, `last-index-of-char, last-index-of-char)
+  add-binding(top-env, `split-pathname, split-pathname)
   add-binding(top-env, `True, TrueT)
   add-binding(top-env, `False, FalseT)
   add-binding(top-env, `core/True, TrueT)
