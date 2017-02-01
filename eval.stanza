@@ -26,35 +26,31 @@ public defstruct Type :
 defmethod print (o:OutputStream, f:Type) :
   print-all(o, ["Type(" name(f) ")"])
 
-public defn eval-begin (env:List<HashTable<Symbol, ?>>, l:List) -> ? :
-  defn* loop (elts:List) :
-    val res = eval(env, head(elts))
-    if empty?(tail(elts)) : res else : loop(tail(elts))
-  loop(l)
+defstruct Entry :
+  getter : () -> ?
+  setter : ? -> False
 
-public defn add-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) -> False :
-  head(env)[name] = value
+public defstruct Frame :
+  entries : HashTable<Symbol, Entry>
+  parents : Tuple<Frame>
 
-public defn set-binding (env:List<HashTable<Symbol, ?>>, name:Symbol, value) :
-  label return:
-    for frame in env do :
-      if key?(frame, name) :
-        frame[name] = value
-        return()
+public defn Frame (parents:Tuple<Frame>) :
+  Frame(HashTable<Symbol, Entry>(), parents)
 
-public defn add-frame (env:List<HashTable<Symbol, ?>>) -> List<HashTable<Symbol, ?>> :
-  cons(HashTable<Symbol, ?>(), env)
+public defn Frame () :
+  Frame([])
 
-public defn add-bindings (env:List<HashTable<Symbol, ?>>, names:List<Symbol>, values:Seqable) -> List<HashTable<Symbol, ?>> :
-  var nenv = add-frame(env)
-  for (name in names, value in values) do :
-    add-binding(nenv, name, value)
-  nenv
+public defn add-binding (frame:Frame, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
+  entries(frame)[name] = Entry(getter, setter)
 
-defstruct NoBranchFoundException <: Exception : ()
+public defn add-binding (frame:Frame, name:Symbol, value) -> False :
+  add-binding(frame, name, { value }, { false })
 
-defmethod print (o:OutputStream, e:NoBranchFoundException) :
-  print(o, "No Branch Found")
+public defn add-binding (env:List<Frame>, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
+  add-binding(head(env), name, getter, setter)
+
+public defn add-binding (env:List<Frame>, name:Symbol, value) -> False :
+  add-binding(env, name, { value }, { false })
 
 defstruct UndefinedBindingException <: Exception :
   name: Symbol
@@ -62,14 +58,44 @@ defstruct UndefinedBindingException <: Exception :
 defmethod print (o:OutputStream, e:UndefinedBindingException) :
   print(o, "Undefined binding %_" % [name(e)])
 
-defn lookup (env:List<HashTable<Symbol, ?>>, name:Symbol) -> ? :
-  label<?> return :
+defn lookup-entry (env:List<Frame>, name:Symbol) -> Entry :
+  label<Entry> return :
+    defn lookup-frame (frame:Frame) :
+      if key?(entries(frame), name) :
+        return(entries(frame)[name])
+      for parent in parents(frame) do :
+        lookup-frame(parent)
     for frame in env do :
-      if key?(frame, name) :
-        return(frame[name])
+      lookup-frame(frame)        
     throw(UndefinedBindingException(name))
 
-defn function (env:List<HashTable<Symbol, ?>>, params:List<Symbol>, body) -> ? :
+defn lookup (env:List<Frame>, name:Symbol) -> ? :
+  getter(lookup-entry(env, name))()
+
+public defn set-binding (env:List<Frame>, name:Symbol, value) :
+  setter(lookup-entry(env, name))(value)
+
+public defn add-frame (env:List<Frame>) -> List<Frame> :
+  cons(Frame(), env)
+
+public defn add-bindings (env:List<Frame>, names:List<Symbol>, values:Seqable) -> List<Frame> :
+  var nenv = add-frame(env)
+  for (name in names, value in values) do :
+    add-binding(nenv, name, value)
+  nenv
+
+public defn eval-begin (env:List<Frame>, l:List) -> ? :
+  defn* loop (elts:List) :
+    val res = eval(env, head(elts))
+    if empty?(tail(elts)) : res else : loop(tail(elts))
+  loop(l)
+
+defstruct NoBranchFoundException <: Exception : ()
+
+defmethod print (o:OutputStream, e:NoBranchFoundException) :
+  print(o, "No Branch Found")
+
+defn function (env:List<Frame>, params:List<Symbol>, body) -> ? :
   switch {length(params) == _}:
     0: fn () : eval(env, body)
     1: fn (a0) : eval(add-bindings(env, params, [a0]), body)
@@ -82,7 +108,7 @@ defn function (env:List<HashTable<Symbol, ?>>, params:List<Symbol>, body) -> ? :
 defstruct Cell :
   value: ? with: (setter => set-value)
 
-defn function* (name:Symbol, env:List<HashTable<Symbol, ?>>, iparams:List<Symbol>, body) -> ? :
+defn function* (name:Symbol, env:List<Frame>, iparams:List<Symbol>, body) -> ? :
   val cell   = Cell(false)
   val params = cons(name, iparams)
   val res    = switch {length(iparams) == _}:
@@ -119,7 +145,7 @@ defstruct UnknownMultiException <: Exception : ()
 defmethod print (o:OutputStream, e:UnknownMultiException) :
   print(o, "Unknown Multi Found")
 
-public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
+public defn eval (env:List<Frame>, sexpr) -> ? :
   ;; println-all(["EVAL: " sexpr])
   val res = 
     match(sexpr) :
@@ -213,10 +239,10 @@ public defn eval (env:List<HashTable<Symbol, ?>>, sexpr) -> ? :
   ;; println-all(["EVAL -> " res])
   res
 
-public defn eval (s:String) -> ? :
+public defn eval (s:String, top-env:Frame) -> ? :
   val forms = read-all(s)
   val es = unwrap-all(parse(forms))
-  val res = eval-begin(top-env, es)
+  val res = eval-begin(List(top-env), es)
   println-all(["FORMS: " forms])
   println-all(["EXP: "   es])
   println-all(["EVAL: "  res])
@@ -228,10 +254,8 @@ public val IntT = Type(`Int, fn (x) : x is Int, fn (x) : x as Int)
 public val FloatT = Type(`Float, fn (x) : x is Float, fn (x): x as Float)
 public val DoubleT = Type(`Double, fn (x) : x is Double, fn (x): x as Double)
 
-public var top-env = List(HashTable<Symbol, ?>())
-
-public defn eval-top-env () :
-  clear(top-env[0])
+public defn eval-top-env () -> Frame :
+  val top-env = Frame()
   add-binding(top-env, to-symbol("true"), true)
   add-binding(top-env, to-symbol("false"), false)
   add-binding(top-env, `core/complement, core/complement)
@@ -270,6 +294,7 @@ public defn eval-top-env () :
   add-binding(top-env, `less?,  less?)
   add-binding(top-env, `greater?,  greater?)
   add-binding(top-env, `equal?,  equal?)
+  add-binding(top-env, `not-equal?,  not-equal?)
   add-binding(top-env, `to-tuple, to-tuple)
   add-binding(top-env, `do, do)
   add-binding(top-env, `join, join)
@@ -297,6 +322,7 @@ public defn eval-top-env () :
   add-binding(top-env, `Int, IntT)
   add-binding(top-env, `Float, FloatT)
   add-binding(top-env, `Double, DoubleT)
+  top-env
 
 ;; defn main () :
 ;;   val s = command-line-arguments()[1]
