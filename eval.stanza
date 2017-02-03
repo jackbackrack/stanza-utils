@@ -40,6 +40,19 @@ public defn Frame (parents:Tuple<Frame>) :
 public defn Frame () :
   Frame([])
 
+public val *packages* = HashTable<Symbol, Package>()
+
+public defstruct Package :
+  name: Symbol
+  parents : Tuple<Package>
+  frame : Frame
+  listeners : HashTable<Symbol, (() -> False)>
+
+public defn Package (name:Symbol, parents:Tuple<Package>) :
+  val res = Package(name, parents, Frame(to-tuple $ seq(frame, parents)), HashTable<Symbol, (() -> False)>())
+  *packages*[name] = res
+  res
+
 public defn add-binding (frame:Frame, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
   entries(frame)[name] = Entry(getter, setter)
 
@@ -71,6 +84,18 @@ defn lookup-entry (env:List<Frame>, name:Symbol) -> Entry :
 
 defn lookup (env:List<Frame>, name:Symbol) -> ? :
   getter(lookup-entry(env, name))()
+
+public defn lookup (env:Symbol, name:Symbol) -> ? :
+  if key?(*packages*, env) :
+    lookup(List(frame(*packages*[env])), name)
+  else :
+    false ;; TODO: UNDEFINED BINDING
+
+public defn safe-lookup (env:Symbol, name:Symbol) -> ? :
+  try :
+    lookup(env, name)
+  catch (e:Exception) :
+    false
 
 public defn set-binding (env:List<Frame>, name:Symbol, value) :
   setter(lookup-entry(env, name))(value)
@@ -239,13 +264,15 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
   ;; println-all(["EVAL -> " res])
   res
 
-public defn eval (s:String, top-env:Frame) -> ? :
+public defn eval (s:String, pkg:Package) -> ? :
   val forms = read-all(s)
   val es = unwrap-all(parse(forms))
-  val res = eval-begin(List(top-env), es)
-  println-all(["FORMS: " forms])
-  println-all(["EXP: "   es])
-  println-all(["EVAL: "  res])
+  val res = eval-begin(List(frame(pkg)), es)
+  add-binding(frame(pkg), `*result*, res)
+  for listener in listeners(pkg) do : value(listener)()
+  ;; println-all(["FORMS: " forms])
+  ;; println-all(["EXP: "   es])
+  ;; println-all(["EVAL: "  res])
   res
     
 public val TrueT = Type(`True, fn (x) : x is True, fn (x) : x as True)
@@ -254,8 +281,9 @@ public val IntT = Type(`Int, fn (x) : x is Int, fn (x) : x as Int)
 public val FloatT = Type(`Float, fn (x) : x is Float, fn (x): x as Float)
 public val DoubleT = Type(`Double, fn (x) : x is Double, fn (x): x as Double)
 
-public defn eval-top-env () -> Frame :
-  val top-env = Frame()
+defn eval-top-env () :
+  val core-pkg = Package(`core, [])
+  val top-env = frame(core-pkg)
   add-binding(top-env, to-symbol("true"), true)
   add-binding(top-env, to-symbol("false"), false)
   add-binding(top-env, `core/complement, core/complement)
@@ -315,6 +343,10 @@ public defn eval-top-env () -> Frame :
   add-binding(top-env, `core/dynamic-wind, core/dynamic-wind)
   add-binding(top-env, `last-index-of-char, last-index-of-char)
   add-binding(top-env, `split-pathname, split-pathname)
+  add-binding(top-env, `keys, keys)
+  add-binding(top-env, `values, values)
+  defn lqs (coll:Seqable) : lazy-qsort(coll)
+  add-binding(top-env, `lazy-qsort, lqs)
   add-binding(top-env, `True, TrueT)
   add-binding(top-env, `False, FalseT)
   add-binding(top-env, `core/True, TrueT)
@@ -323,6 +355,8 @@ public defn eval-top-env () -> Frame :
   add-binding(top-env, `Float, FloatT)
   add-binding(top-env, `Double, DoubleT)
   top-env
+
+eval-top-env()
 
 ;; defn main () :
 ;;   val s = command-line-arguments()[1]
