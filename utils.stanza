@@ -82,11 +82,22 @@ public defn trim (s:String, ok?:(Char) -> True|False) -> String :
          s[i through j]   
       (i:False) : ""
 
+public defn split-any (str:IndexedCollection<Char>, any:String) -> Seq<String> :
+  generate<String> :
+    let loop (start = 0, i = 0) :
+      if i < length(str) :
+        if contains?(any, str[i]) :
+          yield(to-string $ str[start to i])
+          yield(to-string $ str[i through i])
+          loop(i + 1, i + 1)
+        else :
+          loop(start, i + 1)
+            
 public defn split* (str:String, s:String) -> Seq<String> :
    generate<String> :
       val strl = length(str)
       val sl = length(s)
-      defn loop (b:Int) :
+      let loop (b = 0) :
          if b < strl :
             match(index-of-chars(str, b to false, s)) :
                (i:Int) :
@@ -94,7 +105,6 @@ public defn split* (str:String, s:String) -> Seq<String> :
                   loop(i + sl)
                (i:False) :
                   yield(str[b to false])
-      loop(0)
 
 public defn to-array!<?T> (xs:Seqable<?T>) -> Array<T> :
    match(xs) :

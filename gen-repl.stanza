@@ -1,0 +1,71 @@
+defpackage spin :
+  import core
+  import collections
+  import stz/ids
+  import stz/primitives
+  import stz/pkg
+  import stz/pl-ir
+  import stz/kl-ir
+  import stz/tgt-ir
+
+;; TODO: HANDLE AMBIGUOUS REFS WITH ANONYMOUS FUNCTION
+;; TODO: HANDLE TARGS WITH ANONYMOUS FUNCTION
+
+defn dump (s:OutputStream, pkg-name:String, ids:PkgIds) :
+  println-all(s, ["defpackage eval-" pkg-name ":"])
+  println-all(s, ["  import core"])
+  println-all(s, ["  import collections"])
+  println-all(s, ["  import eval"])
+  defn include-import? (imp:Symbol) :
+    not (imp == `clib or (pkg-name == "core" and contains?([`collections `core], imp)) or (pkg-name == "collections" and contains?([`collections], imp)))
+  defn include-function? (fid:FnId|MultiId) :
+    length(targs(fid)) == 0 and length(cargs(fid)) == 0 and 
+      not (pkg-name == "core" and contains?([`sum `product], name(fid))) and
+      not (pkg-name == "utils" and contains?([`ensure-index-in-bounds], name(fid))) and
+      not (pkg-name == "geom" and contains?([`max `min], name(fid))) and
+      not (pkg-name == "ao" and contains?([`max `min], name(fid)))
+  for ipkg in imports(ids) do :
+    val imp = package(ipkg)
+    if include-import?(imp) :
+      println-all(s, ["  import eval-" imp])
+  if not contains?(["core", "collections", "eval"], pkg-name) :
+    println-all(s, ["  import " pkg-name])
+  println-all(s, [""])
+  println-all(s, ["defn fab-pkg () :"])
+  print-all(s, ["  val pkg = Package(`" pkg-name ", ["])
+  for ipkg in imports(ids) do :
+    val imp = package(ipkg)
+    if include-import?(imp) :
+      print-all(s, [" *packages*[`" imp "]"])
+  println-all(s, [" ])"])
+  println-all(s, ["  val env = frame(pkg)"])
+  for decl in declarations(ids) do :
+    val id = id(decl)
+    if id is (ValId|VarId) and visibility(id) is Public :
+      println-all(s, ["  add-binding(env, `" name(id) ", " name(id) ")"])
+    else if id is (FnId|MultiId) and visibility(id) is Public :
+      val fid = id as (FnId|MultiId)
+      if include-function?(fid) :
+        println-all(s, ["  add-binding(env, `" name(id) ", " name(id) ")"])
+    else if id is TypeId and visibility(id) is Public :
+      println-all(s, ["  add-binding(env, `" name(id) ", Type(`" name(id) " fn (x) : x is " name(id) ", fn (x): x as " name(id) "))"])
+  println-all(s, ["  false"])
+  println-all(s, [""])
+  println-all(s, ["fab-pkg()"])
+
+defn dump (pkg-name:String) :
+  val path = if contains?(["core", "collections", "math"], pkg-name) : "/Users/jrb/stanza/pkgs" else : "build"
+  val pathname = string-join([path "/" pkg-name ".pkg"])
+  val pkg = load-package(pathname)
+  val file = FileOutputStream(string-join(["build/eval-" pkg-name ".stanza"]))
+  try :
+    dump(file, pkg-name, ids(pkg))
+  finally : close(file)
+
+
+defn main () :
+  val name = command-line-arguments()[1]
+  dump(name)
+  
+main()  
+
