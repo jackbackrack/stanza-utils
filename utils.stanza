@@ -82,17 +82,33 @@ public defn trim (s:String, ok?:(Char) -> True|False) -> String :
          s[i through j]   
       (i:False) : ""
 
-public defn split-any (str:IndexedCollection<Char>, any:String) -> Seq<String> :
-  generate<String> :
-    let loop (start = 0, i = 0) :
-      if i < length(str) :
+defn split-any* (str:IndexedCollection<Char>, any:String, range:Seq<Int>) -> Seq<KeyValue<Int, String>> :
+  generate<KeyValue<Int, String>> :
+    val beg = next(range)
+    let loop (start = beg, i = beg) :
+      if empty?(range) :
         if contains?(any, str[i]) :
-          yield(to-string $ str[start to i])
-          yield(to-string $ str[i through i])
+          yield(start => (to-string $ str[start to i]))
+          yield(i => (to-string $ str[i through i]))
           loop(i + 1, i + 1)
         else :
           loop(start, i + 1)
-            
+      else if i != start :
+        yield(start => (to-string $ str[start to false]))
+
+public defn split-any (str:IndexedCollection<Char>, any:String) -> Seq<KeyValue<Int, String>> :
+  generate<KeyValue<Int, String>> :
+    let loop (start = 0, i = 0) :
+      if i < length(str) :
+        if contains?(any, str[i]) :
+          yield(start => (to-string $ str[start to i]))
+          yield(i => (to-string $ str[i through i]))
+          loop(i + 1, i + 1)
+        else :
+          loop(start, i + 1)
+      else if start < length(str) :
+        yield(start => (to-string $ str[start to false]))
+
 public defn split* (str:String, s:String) -> Seq<String> :
    generate<String> :
       val strl = length(str)

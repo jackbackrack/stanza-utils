@@ -4,6 +4,7 @@ defpackage spin :
   import stz/ids
   import stz/primitives
   import stz/pkg
+  import stz/tl-ir
   import stz/pl-ir
   import stz/kl-ir
   import stz/tgt-ir
@@ -18,9 +19,14 @@ defn dump (s:OutputStream, pkg-name:String, ids:PkgIds) :
   println-all(s, ["  import eval"])
   defn include-import? (imp:Symbol) :
     not (imp == `clib or (pkg-name == "core" and contains?([`collections `core], imp)) or (pkg-name == "collections" and contains?([`collections], imp)))
-  defn include-function? (fid:FnId|MultiId) :
-    length(targs(fid)) == 0 and length(cargs(fid)) == 0 and 
-      not (pkg-name == "core" and contains?([`sum `product], name(fid))) and
+  defn ref? (x) : x is RefT
+  defn include-function? (fid:LSFnId|FnId|MultiId) :
+    match(fid) :
+    (lfid:LSFnId) :
+      length(targs(fid)) == 0 and all?(ref?, a1(fid)) and ref?(a2(fid))
+    (rfid:FnId|MultiId) :
+      not (pkg-name == "core" and contains?([`sum, `product, `minimum, `maximum, `qsort!, `lazy-qsort, `append-all], name(fid))) and
+      not (pkg-name == "collections" and contains?([], name(fid))) and
       not (pkg-name == "utils" and contains?([`ensure-index-in-bounds], name(fid))) and
       not (pkg-name == "geom" and contains?([`max `min], name(fid))) and
       not (pkg-name == "ao" and contains?([`max `min], name(fid)))
@@ -39,16 +45,36 @@ defn dump (s:OutputStream, pkg-name:String, ids:PkgIds) :
       print-all(s, [" *packages*[`" imp "]"])
   println-all(s, [" ])"])
   println-all(s, ["  val env = frame(pkg)"])
+  defn args-str (n:Int) :
+    string-join(["(" string-join(for i in 0 to n seq : string-join([" a" i])) ")"])
+  defn targs-str (n:Int) :
+    string-join(["<" string-join(for i in 0 to n seq : " ?") ">"])
+  val fns = HashTable<Symbol, List<LSFnId|FnId|MultiId>>()
   for decl in declarations(ids) do :
     val id = id(decl)
     if id is (ValId|VarId) and visibility(id) is Public :
-      println-all(s, ["  add-binding(env, `" name(id) ", " name(id) ")"])
-    else if id is (FnId|MultiId) and visibility(id) is Public :
-      val fid = id as (FnId|MultiId)
-      if include-function?(fid) :
-        println-all(s, ["  add-binding(env, `" name(id) ", " name(id) ")"])
+      println-all(s, ["  add-frame-binding(env, `" name(id) ", " name(id) ")"])
+    else if id is (LSFnId|FnId|MultiId) and visibility(id) is Public :
+      val fid = id as (LSFnId|FnId|MultiId)
+      fns[name(id)] = cons(fid, get?(fns, name(id), List()))
     else if id is TypeId and visibility(id) is Public :
-      println-all(s, ["  add-binding(env, `" name(id) ", Type(`" name(id) " fn (x) : x is " name(id) ", fn (x): x as " name(id) "))"])
+      println-all(s, ["  add-frame-binding(env, `" name(id) ", Type(`" name(id) " fn (x) : x is " name(id) ", fn (x): x as " name(id) "))"])
+  for fs in fns do :
+    val fid = head(value(fs))
+    if all?(include-function?, value(fs)) :
+      val ntargs = length(targs(fid))
+      val arity = length(a1(fid))
+      if length(value(fs)) > 1 :
+        if all?({ _ == length(a1(fid))}, seq(length, seq(a1, value(fs)))) :
+          println-all(s, ["  add-frame-binding(env, `" name(fid) ", fn " args-str(arity) " : " name(fid) args-str(arity) ")"])
+        else if none?({ _ > 0 }, seq({ length(targs(_)) }, value(fs))) :
+          println-all(s, ["  add-frame-binding(env, `" name(fid) ", " name(fid) ")"])
+      else :
+        if ntargs > 0 :
+          println-all(s, ["  add-frame-binding(env, `" name(fid) ", fn " args-str(arity) " : " name(fid) targs-str(ntargs) args-str(arity) ")"])
+        else :
+          println-all(s, ["  add-frame-binding(env, `" name(fid) ", " name(fid) ")"])
+  
   println-all(s, ["  false"])
   println-all(s, [""])
   println-all(s, ["fab-pkg()"])

@@ -53,17 +53,17 @@ public defn Package (name:Symbol, parents:Tuple<Package>) :
   *packages*[name] = res
   res
 
-public defn add-binding (frame:Frame, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
+public defn add-frame-binding* (frame:Frame, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
   entries(frame)[name] = Entry(getter, setter)
 
-public defn add-binding (frame:Frame, name:Symbol, value) -> False :
-  add-binding(frame, name, { value }, { false })
+public defn add-frame-binding (frame:Frame, name:Symbol, value) -> False :
+  add-frame-binding*(frame, name, { value }, { false })
 
-public defn add-binding (env:List<Frame>, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
-  add-binding(head(env), name, getter, setter)
+public defn add-binding* (env:List<Frame>, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
+  add-frame-binding*(head(env), name, getter, setter)
 
 public defn add-binding (env:List<Frame>, name:Symbol, value) -> False :
-  add-binding(env, name, { value }, { false })
+  add-binding*(env, name, { value }, { false })
 
 defstruct UndefinedBindingException <: Exception :
   name: Symbol
@@ -268,7 +268,7 @@ public defn eval (s:String, pkg:Package) -> ? :
   val forms = read-all(s)
   val es = unwrap-all(parse(forms))
   val res = eval-begin(List(frame(pkg)), es)
-  add-binding(frame(pkg), `*result*, res)
+  add-frame-binding(frame(pkg), `*result*, res)
   for listener in listeners(pkg) do : value(listener)()
   ;; println-all(["FORMS: " forms])
   ;; println-all(["EXP: "   es])
