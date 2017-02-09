@@ -21,7 +21,7 @@ public defn rndf (lo:Float, hi:Float) -> Float :
   val d = hi - lo
   lo + (r % d)
 
-public defn ensure-index-in-bounds (xs:Lengthable, i:Int) :
+public defn my-ensure-index-in-bounds (xs:Lengthable, i:Int) :
   if i < 0 or i >= length(xs) :
     fatal("Index (%_) out of bounds." % [i])
       
