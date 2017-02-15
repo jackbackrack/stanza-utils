@@ -7,6 +7,12 @@ defpackage utils :
 
 ;;; GENERAL
 
+public defn qsort-on<?T,?S> (key:T -> ?S&Comparable<S>, coll:Seqable<?T>) :
+  lazy-qsort(coll, compare{key(_), key(_)})
+
+public defn qsort<?T> (coll:Seqable<?T&Comparable<T>>) -> Collection<T> & Lengthable :
+  lazy-qsort(coll, compare)
+
 public defn modulo (x:Float, y:Float) -> Float :
   val d = x / y
   val f = d - to-float(to-int(d))
@@ -110,17 +116,19 @@ public defn split-any (str:IndexedCollection<Char>, any:String) -> Seq<KeyValue<
         yield(start => (to-string $ str[start to false]))
 
 public defn split* (str:String, s:String) -> Seq<String> :
-   generate<String> :
-      val strl = length(str)
-      val sl = length(s)
-      let loop (b = 0) :
-         if b < strl :
-            match(index-of-chars(str, b to false, s)) :
-               (i:Int) :
-                  yield(str[b to i])
-                  loop(i + sl)
-               (i:False) :
-                  yield(str[b to false])
+  generate<String> :
+    val strl = length(str)
+    val sl = length(s)
+    let loop (b = 0) :
+      if b < strl :
+        match(index-of-chars(str, b to false, s)) :
+          (i:Int) :
+            yield(str[b to i])
+            loop(i + sl)
+          (i:False) :
+            yield(str[b to false])
+      else if b > 0 :
+        yield("")
 
 public defn to-array!<?T> (xs:Seqable<?T>) -> Array<T> :
    match(xs) :
