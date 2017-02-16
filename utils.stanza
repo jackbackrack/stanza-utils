@@ -42,6 +42,21 @@ public defn default<T> (v:T|False, d:T) -> T :
     (t:False) : d
     (o:T) : o
 
+public defn reverse<?T> (s:Seq<?T>) -> Seq<T> :
+  val t = to-tuple $ s
+  for i in (length(t) - 1) through 0 by -1 seq : t[i]
+
+public defn next-or<?T> (s:Seq<?T>, default:T) -> T :
+  default when empty?(s) else next(s)
+
+public defn unzip<?S,?T> (z:Seqable<[?S,?T]>) -> [Vector<S>, Vector<T>] :
+  val s = Vector<S>()
+  val t = Vector<T>()
+  for [se, te] in z do :
+    add(s, se)
+    add(t, te)
+  [s, t]
+
 public defn hex-to-int (s: String) -> Int :
   var res = 0
   for i in 2 to length(s) do :
