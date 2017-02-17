@@ -91,12 +91,6 @@ public defn lookup (env:Symbol, name:Symbol) -> ? :
   else :
     false ;; TODO: UNDEFINED BINDING
 
-public defn safe-lookup (env:Symbol, name:Symbol) -> ? :
-  try :
-    lookup(env, name)
-  catch (e:Exception) :
-    false
-
 public defn set-binding (env:List<Frame>, name:Symbol, value) :
   setter(lookup-entry(env, name))(value)
 
@@ -264,10 +258,24 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
   ;; println-all(["EVAL -> " res])
   res
 
-public defn eval (s:String, pkg:Package) -> ? :
+public defn do-eval (pkg:Package, s:String) -> ? :
   val forms = read-all(s)
   val es = unwrap-all(parse(forms))
-  val res = eval-begin(List(frame(pkg)), es)
+  ;; println-all(["DO-EVAL " es])
+  eval-begin(List(frame(pkg)), es)
+
+public defn safe-eval (env:Symbol, expr:String) -> ? :
+  try :
+    ;; println-all(["SAFE-EVAL " env " / " expr])
+    if key?(*packages*, env) :
+      do-eval(*packages*[env], expr)
+    else :
+      false
+  catch (e:Exception) :
+    false
+
+public defn eval (pkg:Package, s:String) -> ? :
+  val res = do-eval(pkg, s)
   add-frame-binding(frame(pkg), `*result*, res)
   for listener in listeners(pkg) do : value(listener)()
   ;; println-all(["FORMS: " forms])
