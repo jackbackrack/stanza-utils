@@ -1,13 +1,14 @@
 defpackage spin :
   import core
   import collections
+  import utils
   import stz/ids
-  import stz/primitives
   import stz/pkg
   import stz/tl-ir
   import stz/pl-ir
   import stz/kl-ir
   import stz/tgt-ir
+  import stz/primitives
 
 ;; TODO: HANDLE AMBIGUOUS REFS WITH ANONYMOUS FUNCTION
 ;; TODO: HANDLE TARGS WITH ANONYMOUS FUNCTION
@@ -103,7 +104,8 @@ defn dump (s:OutputStream, pkg-name:String, ids:PkgIds) :
   println-all(s, ["fab-pkg()"])
 
 defn dump (pkg-name:String) :
-  val path = if contains?(["core", "collections", "math"], pkg-name) : "/Users/jrb/stanza/pkgs" else : "build"
+  val home = default<String>(get-env("HOME"), "/Users/jrb/")
+  val path = if contains?(["core", "collections", "math"], pkg-name) : string-join([home "/stanza/pkgs"]) else : "build"
   val pathname = string-join([path "/" pkg-name ".pkg"])
   val pkg = load-package(pathname)
   val file = FileOutputStream(string-join(["build/eval-" pkg-name ".stanza"]))

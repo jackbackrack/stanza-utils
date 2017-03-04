@@ -20,7 +20,7 @@ ${GEN}/eval-file-system.pkg: ${GEN}/eval-file-system.stanza ${GEN}/utils.pkg
 ${GEN}/socket.o: stanza-utils/socket.c
 	cc $(CFLAGS) -c stanza-utils/socket.c -o $@
 
-${GEN}/socket.pkg: stanza-utils/socket.stanza ${GEN}/socket.o
+${GEN}/socket.pkg: stanza-utils/socket.stanza ${GEN}/socket.o ${GEN}/utils.pkg
 	stanza $< $(STZ_FLAGS)
 
 ${GEN}/process.o: stanza-utils/process.c
@@ -29,7 +29,7 @@ ${GEN}/process.o: stanza-utils/process.c
 ${GEN}/process.pkg: stanza-utils/process.stanza ${GEN}/process.o ${GEN}/utils.pkg 
 	stanza $< $(STZ_FLAGS)
 
-${GEN}/gen-repl: stanza-utils/gen-repl.stanza
+${GEN}/gen-repl: stanza-utils/gen-repl.stanza ${GEN}/utils.pkg
 	stanza $< $(STZ_FLAGS) -o $@
 
 ${GEN}/eval-core.stanza: ${GEN}/gen-repl
