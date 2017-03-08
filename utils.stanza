@@ -13,6 +13,14 @@ public defn qsort-on<?T,?S> (key:T -> ?S&Comparable<S>, coll:Seqable<?T>) :
 public defn qsort<?T> (coll:Seqable<?T&Comparable<T>>) -> Collection<T> & Lengthable :
   lazy-qsort(coll, compare)
 
+public defn set<?T> (v:Vector<?T>, vs:Seqable<T>) -> False :
+  clear(v)
+  add-all(v, vs)
+
+public defn set (v:StringBuffer, vs:Seqable<Char>) -> False :
+  clear(v)
+  add-all(v, vs)
+
 public defn modulo (x:Float, y:Float) -> Float :
   val d = x / y
   val f = d - to-float(to-int(d))
