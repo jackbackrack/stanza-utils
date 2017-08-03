@@ -30,7 +30,16 @@ defn dump (s:OutputStream, pkg-name:String, ids:PkgIds) :
       not (pkg-name == "collections" and contains?([], name(fid))) and
       not (pkg-name == "utils" and contains?([], name(fid))) and
       not (pkg-name == "geom" and contains?([`max `min], name(fid))) and
-      not (pkg-name == "ao" and contains?([`max `min], name(fid)))
+      not (pkg-name == "ao" and contains?([`max `min], name(fid))) and
+      not (pkg-name == "sob/core/vec" and contains?([`max `min], name(fid))) and
+      not (pkg-name == "sob/core/xml" and contains?([`Element], name(fid))) and
+      not (pkg-name == "sob/core/pcb" and contains?([`rot `xform `Element, `Package], name(fid))) and
+      not (pkg-name == "sob/core/jitpcb" and contains?([`Signal], name(fid))) and
+      not (pkg-name == "sob/core/sob" and contains?([`Type `Pad], name(fid)))
+  defn include-type? (name:Symbol) :
+    not (pkg-name == "sob/core/pcb" and contains?([`Element, `Package], name)) and
+    not (pkg-name == "sob/core/jitpcb" and contains?([`Signal], name)) and
+    not (pkg-name == "sob/core/sob" and contains?([`Type `Pad], name))
   defn extra-ids () :
     if pkg-name == "core" :
       ["`core/KeyValue" => "core/KeyValue"
@@ -69,7 +78,8 @@ defn dump (s:OutputStream, pkg-name:String, ids:PkgIds) :
     string-join(["<" string-join(for i in 0 to n seq : " ?") ">"])
   val fns = HashTable<Symbol, List<LSFnId|FnId|MultiId>>()
   defn print-type (var-name, type-name) :
-    println-all(s, ["  add-frame-binding(env, `" var-name ", Type(`" var-name " fn (x) : x is " type-name ", fn (x): x as " type-name "))"])
+    if include-type?(var-name) :
+      println-all(s, ["  add-frame-binding(env, `" var-name ", Type(`" var-name " fn (x) : x is " type-name ", fn (x): x as " type-name "))"])
   for decl in declarations(ids) do :
     val id = id(decl)
     if id is (ValId|VarId) and visibility(id) is Public :
@@ -106,9 +116,11 @@ defn dump (s:OutputStream, pkg-name:String, ids:PkgIds) :
 defn dump (pkg-name:String) :
   val home = default<String>(get-env("HOME"), "/Users/jrb/")
   val path = if contains?(["core", "collections", "math"], pkg-name) : string-join([home "/stanza/pkgs"]) else : "build"
-  val pathname = string-join([path "/" pkg-name ".pkg"])
+  val filename = replace(pkg-name, '/', '$')
+  val pathname = string-join([path "/" filename ".pkg"])
+  println-all(["PKG-NAME " pkg-name " FILENAME " filename])
   val pkg = load-package(pathname)
-  val file = FileOutputStream(string-join(["build/eval-" pkg-name ".stanza"]))
+  val file = FileOutputStream(string-join(["build/eval-" filename ".stanza"]))
   try :
     dump(file, pkg-name, ids(pkg))
   finally : close(file)
