@@ -78,7 +78,7 @@ defn dump (s:OutputStream, pkg-name:String, ids:PkgIds) :
     string-join(["<" string-join(for i in 0 to n seq : " ?") ">"])
   val fns = HashTable<Symbol, List<LSFnId|FnId|MultiId>>()
   defn print-type (var-name, type-name) :
-    if include-type?(var-name) :
+    if include-type?(to-symbol $ var-name) :
       println-all(s, ["  add-frame-binding(env, `" var-name ", Type(`" var-name " fn (x) : x is " type-name ", fn (x): x as " type-name "))"])
   for decl in declarations(ids) do :
     val id = id(decl)
