@@ -85,7 +85,7 @@ public defn registry-files (filename:String) :
     string-join([registry-dirname pathname])
   defn reloc-pathname (file:File) :
     val dir = switch(kind(file)) :
-      `stz : "/Users/jrb/stanza/"
+      `stz : "../stanza/"
       `gen : "build/"
       else : registry-dirname
     File(string-join([dir name(file)]), kind(file), syntax(file), packages(file))
