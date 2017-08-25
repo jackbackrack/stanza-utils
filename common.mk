@@ -4,6 +4,7 @@ ALL_DEPS =
 
 STANZADIR = `python stanza-utils/stanza-install-dir.py`
 STZ_COMPILER_MAIN = ${STANZADIR}/compiler/stz-main.stanza
+BASE_EVAL_PKGS = ${GEN}/eval-core.pkg ${GEN}/eval-collections.pkg ${GEN}/eval-math.pkg ${GEN}/eval.pkg
 
 print_stz_compiler_main:
 	echo ${STZ_COMPILER_MAIN}
