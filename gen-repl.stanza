@@ -36,6 +36,16 @@ defstruct FnEntry :
   fid:LSFnId|FnId|MultiId
   type-names:IntTable<Symbol>
 
+defn include-type? (name:Symbol) :
+  true 
+  ;; not (pkg-name == "sob/core/pcb" and contains?([`Element, `Package], name)) and
+  ;; not (pkg-name == "sob/core/jitpcb" and contains?([`Signal], name)) and
+  ;; not (pkg-name == "sob/core/sob" and contains?([`Type `Pad], name))
+
+defn print-type (s:OutputStream, var-name, type-name) :
+  if include-type?(to-symbol $ var-name) :
+    println-all(s, ["  eval-add-frame-binding(frame, `" var-name ", eval-Type(`" var-name " fn (x) : x is " type-name ", fn (x): x as " type-name "))"])
+
 defn visit (s:OutputStream, pkg-name:Symbol, directs:HashSet<Symbol>,
             visited?:HashSet<Symbol>, visible?:HashSet<Symbol>,
             fns:HashTable<Symbol, List<FnEntry>>) -> False :
@@ -74,11 +84,6 @@ defn visit (s:OutputStream, pkg-name:Symbol, directs:HashSet<Symbol>,
       ;; not (pkg-name == "sob/core/pcb" and contains?([`rot `xform `Element, `Package], name(fid))) and
       ;; not (pkg-name == "sob/core/jitpcb" and contains?([`Signal], name(fid))) and
       ;; not (pkg-name == "sob/core/sob" and contains?([`Type `Pad], name(fid)))
-  defn include-type? (name:Symbol) :
-    true 
-    ;; not (pkg-name == "sob/core/pcb" and contains?([`Element, `Package], name)) and
-    ;; not (pkg-name == "sob/core/jitpcb" and contains?([`Signal], name)) and
-    ;; not (pkg-name == "sob/core/sob" and contains?([`Type `Pad], name))
   for ipkg in imports(ids(pkg)) do :
     val imp = package(ipkg)
     if not visited?[imp] :
@@ -90,9 +95,6 @@ defn visit (s:OutputStream, pkg-name:Symbol, directs:HashSet<Symbol>,
           if visibility(id(imp)) is Public :
             type-names[n(imp)] = name(tid)
         (id) : false
-  defn print-type (var-name, type-name) :
-    if include-type?(to-symbol $ var-name) :
-      println-all(s, ["  eval-add-frame-binding(frame, `" var-name ", eval-Type(`" var-name " fn (x) : x is " type-name ", fn (x): x as " type-name "))"])
   for decl in declarations(ids(pkg)) do :
     match(id(decl)) :
       (vid:ValId|VarId) :
@@ -105,7 +107,7 @@ defn visit (s:OutputStream, pkg-name:Symbol, directs:HashSet<Symbol>,
         if visibility(id(decl)) is Public :
           type-names[n(decl)] = name(tid)
           if direct? :
-            print-type(name(tid), name(tid))
+            print-type(s, name(tid), name(tid))
       (id) : false
   for decl in declarations(ids(pkg)) do :
     match(id(decl)) :
@@ -143,10 +145,8 @@ defn dump (pkg-name:String) :
      "to-symbol(\"true\")" => "true",
      "to-symbol(\"false\")" => "false"]
   defn extra-types () :
-    if pkg-name == "core" :
-      ["core/True" => "True", "core/False" => "False",
-       "Int" => "Int", "Float" => "Float", "Double" => "Double", "Char" => "Char", "String" => "String" ]
-    else : [ ]
+    ["core/True" => "True", "core/False" => "False",
+     "Int" => "Int", "Float" => "Float", "Double" => "Double", "Char" => "Char", "String" => "String" ]
   defn type-str (type-names:IntTable<Symbol>, tt) :
     ;; println-all(["T = " tt])
     match(tt) :
@@ -167,8 +167,8 @@ defn dump (pkg-name:String) :
   ;; println-all(["TYPES " to-tuple $ values(type-names)])
   for kv in extra-ids() do :
     println-all(s, ["  eval-add-frame-binding(frame, " key(kv) ", " value(kv) ")"])
-  ;; for kv in extra-types() do :
-  ;;   print-type(key(kv), value(kv))
+  for kv in extra-types() do :
+    print-type(s, key(kv), value(kv))
   val counter = to-seq(0 to false)
   defn output-fs (fname:Symbol, fs:List<FnEntry>) :
     val anon = symbol-join(["f-" next(counter)])
