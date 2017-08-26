@@ -2,6 +2,7 @@ defpackage eval:
   import core
   import math
   import collections
+  import stz/algorithms
   import reader
   import stz/core-macros
   import utils
@@ -123,6 +124,10 @@ defn function (env:List<Frame>, params:List<Symbol>, body) -> ? :
     4: fn (a0, a1 a2 a3) : eval(add-bindings(env, params, [a0 a1 a2 a3]), body)
     5: fn (a0, a1 a2 a3 a4) : eval(add-bindings(env, params, [a0 a1 a2 a3 a4]), body)
     6: fn (a0, a1 a2 a3 a4 a5) : eval(add-bindings(env, params, [a0 a1 a2 a3 a4 a5]), body)
+    7: fn (a0, a1 a2 a3 a4 a5 a6) : eval(add-bindings(env, params, [a0 a1 a2 a3 a4 a5 a6]), body)
+    8: fn (a0, a1 a2 a3 a4 a5 a6 a7) : eval(add-bindings(env, params, [a0 a1 a2 a3 a4 a5 a6 a7]), body)
+    9: fn (a0, a1 a2 a3 a4 a5 a6 a7 a8) : eval(add-bindings(env, params, [a0 a1 a2 a3 a4 a5 a6 a7 a8]), body)
+    else : println-all(["TOO MANY FUNCTION PARAMS " params])
 
 defstruct Cell :
   value: ? with: (setter => set-value)
@@ -145,6 +150,13 @@ defn function* (name:Symbol, env:List<Frame>, iparams:List<Symbol>, body) -> ? :
          eval(add-bindings(env, params, [value(cell) a0 a1 a2 a3 a4]), body)
     6: fn* (a0, a1 a2 a3 a4 a5) :
          eval(add-bindings(env, params, [value(cell) a0 a1 a2 a3 a4 a5]), body)
+    7: fn* (a0, a1 a2 a3 a4 a5 a6) :
+         eval(add-bindings(env, params, [value(cell) a0 a1 a2 a3 a4 a5 a6]), body)
+    8: fn* (a0, a1 a2 a3 a4 a5 a6 a7) :
+         eval(add-bindings(env, params, [value(cell) a0 a1 a2 a3 a4 a5 a6 a7]), body)
+    9: fn* (a0, a1 a2 a3 a4 a5 a6 a7 a8) :
+         eval(add-bindings(env, params, [value(cell) a0 a1 a2 a3 a4 a5 a6 a7 a8]), body)
+    else : println-all(["TOO MANY FUNCTION* PARAMS " params])
   set-value(cell, res)
   res
 
@@ -157,7 +169,12 @@ public defn apply (f, a:List) -> ? :
     4: f(a[0], a[1], a[2], a[3])
     5: f(a[0], a[1], a[2], a[3], a[4])
     6: f(a[0], a[1], a[2], a[3], a[4], a[5])
+    7: f(a[0], a[1], a[2], a[3], a[4], a[5], a[6])
+    8: f(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7])
+    9: f(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8])
+    else: println-all(["TOO MANY APPLY ARGS " a])
     ;; else: false ;; TODO
+
 
 defstruct UnknownMultiException <: Exception : ()
 
