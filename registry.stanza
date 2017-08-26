@@ -1,0 +1,211 @@
+defpackage registry :
+  import core
+  import reader
+
+public defstruct Registry :
+  name : Symbol
+  includes : List<Include>
+  files : List<File>
+
+defmethod print (o:OutputStream, e:Registry) :
+  print(o, "Registry(%_, %_, %_)" % [name(e), includes(e), files(e)])
+
+public defstruct Include :
+  pathname : String
+
+defmethod print (o:OutputStream, e:Include) :
+  print(o, "Include(%_)" % [pathname(e)])
+
+public defstruct File <: Equalable :
+  name : String
+  kind : Symbol
+  syntax: False|Syntax
+  packages: List<Package>
+
+defmethod equal? (a:File, b:File) -> True|False :
+  name(a) == name(b)
+
+defmethod print (o:OutputStream, e:File) :
+  print(o, "File(%_, %_, %_, %_)" % [name(e), kind(e), syntax(e), packages(e)])
+
+public defstruct Package <: Equalable :
+  name : Symbol
+  dependencies: List<Dependency>
+  links: List<Link>
+
+defmethod equal? (a:Package, b:Package) -> True|False :
+  name(a) == name(b)
+
+defmethod print (o:OutputStream, e:Package) :
+  print(o, "Package(%_, %_, %_)" % [name(e), dependencies(e), links(e)])
+
+public defstruct Dependency :
+  value : String
+
+defmethod print (o:OutputStream, e:Dependency) :
+  print(o, "Dependency(%_)" % [value(e)])
+
+public defstruct Syntax :
+  value : Symbol
+
+defmethod print (o:OutputStream, e:Syntax) :
+  print(o, "Syntax(%_)" % [value(e)])
+
+public defstruct Link :
+  os : Symbol
+  value : String
+
+defmethod print (o:OutputStream, e:Link) :
+  print(o, "Link(%_, %_)" % [os(e), value(e)])
+
+public defn parse-registry-input (form) :
+  parse-syntax[registry-ir / #defregistry](form)
+
+public defn read-registry-input (filename:String) :
+  parse-registry-input(read-file(filename))
+
+public defn split-pathname (pathname:String) -> [String, String]:
+  val index = last-index-of-char(pathname, '/')
+  match(index) :
+    (f:False) : ["", pathname]
+    (i:Int)   : [pathname[0 to (i + 1)], pathname[(i + 1) to false]]
+
+public defn dir-name (pathname:String) -> String :
+  split-pathname(pathname)[0]
+
+public defn base-name (pathname:String) -> String :
+  split-pathname(pathname)[1]
+
+public defn registry-files (filename:String) :
+  val registry-pathname = string-join([filename "/config.reg"])
+  val registry-dirname = dir-name(registry-pathname)
+  ;; println("reading %_" % [registry-pathname])
+  val reg = read-registry-input(registry-pathname)
+  defn config-name (pathname:String) :
+    string-join([registry-dirname pathname])
+  defn reloc-pathname (file:File) :
+    val dir = switch(kind(file)) :
+      `stz : "../stanza/"
+      `gen : "build/"
+      else : registry-dirname
+    File(string-join([dir name(file)]), kind(file), syntax(file), packages(file))
+  unique(reduce(cat, seq(reloc-pathname, files(reg)), seq({ registry-files(config-name(pathname(_))) }, includes(reg))))
+
+;============================================================
+;================== Syntax Definition =======================
+;============================================================
+
+defsyntax registry-ir :
+  ;===== Utilities =====
+  defn ut (x) : unwrap-token(x)
+
+  ;===== Basics =====
+  defproduction symbol : Symbol
+  defrule symbol = (?x) when ut(x) is Symbol : ut(x)
+
+  defproduction string : String
+  defrule string = (?x) when ut(x) is String : ut(x)
+
+  defproduction int : Int
+  defrule int = (?x) when ut(x) is Int : ut(x)
+
+  ;===== Errors =====
+  defproduction symbol! : Symbol
+  defrule symbol! = (?x:#symbol) : x
+  fail-if symbol! = () : RegE(closest-info(), "Symbol expected here.")
+
+  defproduction string! : String
+  defrule string! = (?x:#string) : x
+  fail-if string! = () : RegE(closest-info(), "String expected here.")
+
+  defproduction int! : Int
+  defrule int! = (?x:#int) : x
+  fail-if int! = () : RegE(closest-info(), "Int expected here.")
+
+  defproduction :! : Symbol
+  defrule :! = (:) : (`:)
+  fail-if symbol = () : RegE(closest-info(), "Colon expected here.")
+
+  defproduction file! : File
+  defrule file! = (?x:#file) : x
+  fail-if file! = () : RegE(closest-info(), "File expected here.")
+
+  defproduction link! : Link
+  defrule link! = (?x:#link) : x
+  fail-if link! = () : RegE(closest-info(), "Link expected here.")
+
+  defproduction include! : Include
+  defrule include! = (?x:#include) : x
+  fail-if include! = () : RegE(closest-info(), "Include expected here.")
+
+  ;===== Registry =====
+  public defproduction defregistry: Registry
+  defrule defregistry = (defregistry ?name:#symbol! #:! (?incs:#include ... ?files:#file ...)) :
+    Registry(name, incs, files)
+
+  ;===== File =====
+  defproduction kind: Symbol
+  defrule kind = (app) : `app ;; top level app file
+  defrule kind = (stz) : `stz ;; stanza system file
+  defrule kind = (gen) : `gen ;; generated file in build directory
+  defrule kind = (mac) : `mac ;; macros to be turned into a compiler
+  defrule kind = ()    : `std ;; default normal file
+
+  defproduction file: File
+  defrule file = (file ?name:#string! ?a:#kind : (?syntax:#syntax ?pkgs:#package ...)) :
+    File(name, a, syntax, pkgs)
+  defrule file = (file ?name:#string! ?a:#kind) :
+    File(name, a, false, List())
+  defrule file = (file ?name:#string!) :
+    File(name, `std, false, List())
+
+  ;===== Link =====
+  defproduction link: Link
+  defrule link = (link ?os:#symbol! ?libs:#string!) :
+    Link(os, libs)
+
+  ;===== Dependency =====
+  defproduction dependency: Dependency
+  defrule dependency = (dependency ?value:#string!) :
+    Dependency(value)
+
+  ;===== Syntax =====
+  defproduction syntax: False|Syntax
+  defrule syntax = (syntax ?value:#symbol!) :
+    Syntax(value)
+  defrule syntax = () :
+    false
+
+  ;===== Include =====
+  defproduction include: Include
+  defrule include = (include ?pathname:#string!) :
+    Include(pathname)
+
+  ;===== Package =====
+  defproduction package: Package
+  defrule package = (package ?name:#symbol! : (?deps:#dependency ... ?links:#link! ...)) :
+    Package(name, deps, links)
+  defrule package = (package ?name:#symbol!) :
+    Package(name, List(), List())
+
+;Errors
+defstruct RegException <: Exception :
+  info: False|FileInfo
+  msg
+with :
+  constructor => RegE
+defmethod print (o:OutputStream, e:RegException) :
+  match(info(e)) :
+    (info:False) : print(o, msg(e))
+    (info:FileInfo) : print(o, "%_: %_" % [info, msg(e)])
+
+;============================================================
+;========================= Main =============================
+;============================================================
+
+#if-defined(REGISTRY-MAIN) :
+  defn main () :
+    val filename = command-line-arguments()[1]
+    val input = read-registry-input(filename)
+    println(input)
+  main()

@@ -1,0 +1,34 @@
+defregistry stanza-utils :
+  file "core/core.stanza" stz
+  file "core/collections.stanza" stz
+  file "core/reader.stanza" stz
+  file "core/parser.stanza" stz
+  file "core/macro-utils.stanza" stz
+  file "compiler/stz-algorithms.stanza" stz
+  file "compiler/stz-core-macros.stanza" stz
+  file "compiler/stz-params.stanza" stz
+  file "compiler/stz-ids.stanza" stz
+  file "compiler/stz-pkg.stanza" stz
+  file "compiler/stz-tl-ir.stanza" stz
+  file "compiler/stz-pl-ir.stanza" stz
+  file "compiler/stz-kl-ir.stanza" stz
+  file "compiler/stz-tgt-ir.stanza" stz
+  file "compiler/stz-primitives.stanza" stz
+  file "eval.stanza"
+  file "socket.c"
+  file "socket.stanza" :
+    package socket :
+      dependency "${GEN}/socket.o"
+      link * "${GEN}/socket.o"
+  file "process.c"
+  file "process.stanza" :
+    package process :
+      dependency "${GEN}/process.o"
+      link * "${GEN}/process.o"
+  file "file-system.c"
+  file "file-system.stanza" :
+    package file-system :
+      dependency "${GEN}/file-system.o"
+      link * "${GEN}/file-system.o"
+  file "gen-repl.stanza" app
+  file "utils.stanza"

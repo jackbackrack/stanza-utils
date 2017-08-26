@@ -3,7 +3,6 @@ stanza_utils_all: ${GEN}/eval.pkg ${GEN}/file-system.pkg ${GEN}/socket.pkg  ${GE
 LIBS += ${GEN}/socket.o ${GEN}/file-system.o ${GEN}/process.o
 
 ALL_PKG_DEPS += stanza_utils_all
-BASE_EVAL_PKGS = ${GEN}/eval-core.pkg ${GEN}/eval-collections.pkg ${GEN}/eval-math.pkg ${GEN}/eval.pkg
 
 ${GEN}/eval.pkg: stanza-utils/eval.stanza ${GEN}/utils.pkg ${GEN}/file-system.pkg 
 	stanza $< $(STZ_FLAGS)

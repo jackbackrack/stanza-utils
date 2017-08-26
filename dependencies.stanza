@@ -1,0 +1,254 @@
+defpackage stz/dependencies :
+   import core
+   import collections
+   import reader
+   import macro-utils
+   import stz/input
+   import stz/compiler
+   import stz/core-macros
+   import stz/params
+   import stz/utils
+   import stz/algorithms
+   import stz/renamer
+   import stz/resolver
+   import stz/type
+   import stz/type-to-kform
+   import stz/kform
+   import stz/kform-to-tgt
+   import stz/pl-ir
+   import stz/il-ir
+   import stz/tl-ir
+   import stz/kl-ir
+   import stz/asm-ir
+   import stz/tgt-ir
+   import stz/tgt-utils
+   import stz/namemap
+   import stz/backend
+   import stz/codegen
+   import stz/asm-emitter
+   import stz/pkg
+   import stz/fuse
+   import stz/compiler
+   import stz/ast-lang
+   import stz/reader-lang
+   import stz/check-lang
+   import stz/renamer-lang
+   import stz/resolver-lang
+   import stz/serializer-lang
+   import stz/ast-printer-lang
+   import registry
+
+defn macroexpand (forms:List) -> List :
+  val es = parse-syntax[core / #exps!](forms)
+  cons(`$begin, es)
+
+defn filename-packages (filenames:Seqable<String>) -> HashTable<String,List<IPackage>> :
+  defn packages (e:IExp) :
+    to-list $ generate<IPackage> :
+      let loop (e:IExp = e) :
+        match(e) :
+          (e:IPackage) :
+            check(e)
+            yield(e)
+          (e:IBegin) :
+            do(loop, exps(e))
+          (e) :
+            false
+  defn packages (filename:String) :
+    throw(InvalidExtensionError(filename)) when not suffix?(filename,".stanza")
+    packages(read-prog(macroexpand(read-file(filename))))
+  to-hashtable<String, List<IPackage>> $ for filename in filenames seq :
+    filename => packages(filename)
+
+defn pkg-name (name:Symbol) -> String :
+  string-join(["${GEN}/" replace(to-string $ name, "/", "$$") ".pkg"])
+
+defn non-suffix (filename:String) :
+  val index = last-index-of-char(filename, '.')
+  filename[0 to (index as Int)]
+    
+defn obj-filename (filename:String) :
+  non-suffix(base-name(filename))
+
+public defn gen-dependencies (all-files:Seqable<File>) :
+  val files0 = to-tuple $ for file in all-files filter : suffix?(name(file), ".stanza")
+  val filenames = to-list $ seq(name, filter({ kind(_) != `gen}, files0))
+  val filename-pkgs = filename-packages(filenames)
+  val file-table0 = to-hashtable<String, File> $ seq(fn (f) : name(f) => f, files0)
+
+  val graph = HashTable<Symbol, List<Symbol>>()
+  val package-filename = HashTable<Symbol, String>()
+  
+  val files = to-tuple $ generate<File> :
+    for kv in filename-pkgs do :
+      val filename = key(kv)
+      val file = file-table0[filename]
+      val pkgs = generate<Package> :
+        val pkg-table = to-hashtable<Symbol, Package> $ seq(fn (p) : name(p) => p, packages(file))
+        for pkg in value(kv) do :
+          val pkg-name = name!(pkg)
+          package-filename[pkg-name] = filename
+          graph[pkg-name] = to-list $ for imp in imports(pkg) seq :
+            name!(package(imp as IImport))
+          yield(get?(pkg-table, pkg-name, Package(pkg-name, List(), List())))
+      yield(File(name(file), kind(file), syntax(file), to-list $ pkgs))
+    for file in files0 do :
+      if kind(file) == `gen :
+        val pkg = Package(to-symbol $ obj-filename(name(file)), List(), List())
+        package-filename[name(pkg)] = name(file)
+        graph[name(pkg)] = List()
+        yield(File(name(file), kind(file), syntax(file), List(pkg)))
+
+  ;; println-all(["FILES " files])
+
+  val file-table = to-hashtable<String, File> $ seq(fn (f) : name(f) => f, files)
+
+  val groups = strong-components(graph)
+  
+  ;; for group in groups do :
+  ;;   println(group)
+
+  ;; for kv in graph do :
+  ;;   println-all(["PKG " key(kv) " IMPORTS " value(kv)])
+
+  defn user? (name:Symbol) :
+    kind(file-table[package-filename[name]]) != `stz
+
+  val pkgs = to-hashtable<Symbol, Package> $ generate<KeyValue<Symbol, Package>> :
+    for file in files do :
+      for package in packages(file) do :
+        yield(name(package) => package)
+      for package in get?(filename-pkgs, name(file), List()) do :
+        if not contains?(seq(name, packages(file)), name!(package)) :
+          yield(name!(package) => Package(name!(package), List(), List()))
+      
+  println("GEN = build")
+  println("STZ = stanza")
+  println("STZ_FLAGS = -pkg ${GEN} ${STZ_OPT}")
+  println("STANZADIR = `python stanza-utils/stanza-install-dir.py`")
+  println("STZ_COMPILER_MAIN = ${STANZADIR}/compiler/stz-main.stanza")
+  println("OS2 := $(strip $(shell uname))")
+  println("")
+  println("ifeq ($(OS2), Darwin)")
+  println("  $(info Compiling for Darwin)")
+  println("  CFLAGS = -DMACOSX=1")
+  println("  LIBS = $(COMMON_LIBS)")
+  println("else")
+  println("  $(info Compiling for non Darwin)")
+  println("  OS := $(strip $(shell uname -o))")
+  println("  ifeq ($(OS), GNU/Linux)")
+  println("    $(info Compiling for GNU/Linux)")
+  println("    CFLAGS = ")
+  println("    LIBS = $(COMMON_LIBS) -lm")
+  println("  endif")
+  println("endif")
+  println("")
+  println("clean:")
+  println("\trm -f ${GEN}/*; echo \"build products\" > ${GEN}/readme.txt")
+  println("")
+
+  defn print-rule (e:Symbol, team:List<Symbol>) :
+    val file = file-table[package-filename[e]]
+    if contains?([`std, `app], kind(file)) :
+      print("%_: %_" % [pkg-name(e) package-filename[e]])
+      for guy in team do :
+        for import in graph[guy] do :
+          print(" %_" % [pkg-name(import)]) when user?(import)
+        for dep in dependencies(pkgs[guy]) do :
+          print(" %_" % [value(dep)])
+      val [compiler, compiler?] = match(syntax(file-table[package-filename[e]])) :
+        (s:Syntax) : [string-join(["${GEN}/" value(s) "-stanza"]), true]
+        (s:False) : ["${STZ}", false]
+      print(" %_" % [compiler]) when compiler?
+      println("")
+      val file-set = HashSet<String>()
+      for pkg-name in team do :
+        add(file-set, package-filename[pkg-name]) when user?(pkg-name)
+      val files = to-tuple $ file-set
+      println("\t%_ %_ %_" % [compiler string-join(files, " ") "${STZ_FLAGS}"])
+      println("")
+
+  for group in groups do :
+    match(group) :
+      (elts:List<Symbol>) :
+        for e in elts do :
+          print-rule(e, elts)
+      (elt:Symbol) :
+        print-rule(elt, List(elt))
+
+  val c-files = to-tuple $ for file in all-files filter : suffix?(name(file), ".c")
+  for file in c-files do :
+    println("${GEN}/%_.o: %_" % [obj-filename(name(file)) name(file)])
+    println("\t${CC} -c ${CFLAGS} -o ${GEN}/%_.o %_" % [obj-filename(name(file)) name(file)])
+    println("")
+
+  val gen-files = to-tuple $ for file in files filter : kind(file) == `gen
+  for file in gen-files do :
+    val obj = obj-filename(name(file))
+    val base = obj[length("eval-") to false]
+    println("${GEN}/%_.stanza: ${GEN}/gen-repl ${GEN}/eval.pkg %_" % [obj pkg-name(to-symbol $ base)])
+    println("\t${GEN}/gen-repl %_" % [base])
+    println("")
+    println("%_: ${GEN}/%_.stanza" % [pkg-name(to-symbol $ obj) obj])
+    println("\t${STZ} ${GEN}/%_.stanza -pkg ${GEN}" % [obj])
+    println("")
+
+  val mac-files = to-tuple $ for file in files filter : kind(file) == `mac
+  for file in mac-files do :
+    println("${GEN}/%_-stanza: %_" % [obj-filename(name(file)) name(file)])
+    println("\tstanza ${STZ_COMPILER_MAIN} %_ -flags OPTIMIZE -o ${GEN}/%_-stanza" % [name(file) obj-filename(name(file))])
+    println("")
+
+  defn used-packages (pkg-roots:Seqable<Package>) :
+    val used = HashTable<Symbol, Package>()
+    defn loop (root:Package) -> False :
+      if not key?(used, name(root)) :
+        used[name(root)] = root
+        do(fn (i): loop(pkgs[i]) when key?(pkgs, i), graph[name(root)])
+    do(loop, pkg-roots)
+    values(used)
+
+  defn direct-packages (pkgs:Seqable<Package>) :
+    unique(cat-all(seq({ graph[name(_)] }, pkgs)))
+
+  defn os-links (os-name:Symbol, pkgs:Seqable<Package>) :
+    generate<Link> :
+      for pkg in pkgs do :
+        for link in links(pkg) do :
+          if os(link) == os-name or os(link) == `* :
+            yield(link)
+
+  for file in files do :
+    if kind(file) == `app :
+      val used-pkgs = to-tuple $ used-packages(packages(file))
+      val direct-pkgs = to-tuple $ direct-packages(packages(file))
+      val app-filename = obj-filename(name(file))
+      val mac-links = os-links(`Darwin, used-pkgs)
+      val linux-links = os-links(`GNU/Linux, used-pkgs)
+      println("ifeq ($(OS2), Darwin)")
+      println("  %__LIBS = %_" % [app-filename, string-join(seq(value, mac-links), " ")])
+      println("else")
+      println("  OS := $(strip $(shell uname -o))")
+      println("  ifeq ($(OS), GNU/Linux)")
+      println("    %__LIBS = %_" % [app-filename, string-join(seq(value, linux-links), " ")])
+      println("  endif")
+      println("endif")
+      println("")
+      println("${GEN}/%_: %*" % [app-filename, join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " ")])
+      println("\t${STZ} %_ -o ${GEN}/%_ -pkg ${GEN} -ccflags \"${%__LIBS}\"" % [name(file) app-filename app-filename])
+      println("")
+
+defn InvalidExtensionError (filename:String) :
+  new Exception :
+    defmethod print (o:OutputStream, this) :
+      print(o, "File %_ does not have a valid Stanza file extension." % [filename])
+
+defn main () :
+  val filename = command-line-arguments()[1]
+  val input = to-tuple $ registry-files(filename)
+  ;; println(input)
+  ;; println(stanza-files)
+  gen-dependencies(input)
+
+
+main()
