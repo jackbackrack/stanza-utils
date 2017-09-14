@@ -29,6 +29,9 @@ public defn modulo (x:Float, y:Float) -> Float :
 public defn sign (x:Float) -> Float :
   1.0f when x > 0.0f else -1.0f when x < 0.0f else 0.0f
 
+public defn rndi (lo:Int, hi:Int) -> Int :
+  (rand() % (hi - lo + 1)) + lo
+
 public defn rndf () -> Float :
   val n = 1000000
   to-float(rand() % n) / to-float(n)
