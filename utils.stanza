@@ -10,8 +10,8 @@ defpackage utils :
 public defn qsort-on<?T,?S> (key:T -> ?S&Comparable<S>, coll:Seqable<?T>) :
   lazy-qsort(coll, compare{key(_), key(_)})
 
-public defn qsort<?T> (coll:Seqable<?T&Comparable<T>>) -> Collection<T> & Lengthable :
-  lazy-qsort(coll, compare)
+;; public defn qsort<?T> (coll:Seqable<?T&Comparable<T>>) -> Collection<T> & Lengthable :
+;;   lazy-qsort(coll, compare)
 
 public defn set<?T> (v:Vector<?T>, vs:Seqable<T>) -> False :
   clear(v)
