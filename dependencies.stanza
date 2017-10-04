@@ -147,6 +147,11 @@ public defn gen-dependencies (all-files:Seqable<File>) :
   println("\trm -f ${GEN}/*; echo \"build products\" > ${GEN}/readme.txt")
   println("")
 
+  defn compiler-of (file:File) -> [String, True|False] :
+    match(syntax(file)) :
+      (s:Syntax) : [string-join(["${GEN}/" value(s) "-stanza"]), true]
+      (s:False) : ["${STZ}", false]
+  
   defn print-rule (e:Symbol, team:List<Symbol>) :
     val file = file-table[package-filename[e]]
     if contains?([`std, `app], kind(file)) :
@@ -156,9 +161,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
           print(" %_" % [pkg-name(import)]) when user?(import)
         for dep in dependencies(pkgs[guy]) do :
           print(" %_" % [value(dep)])
-      val [compiler, compiler?] = match(syntax(file-table[package-filename[e]])) :
-        (s:Syntax) : [string-join(["${GEN}/" value(s) "-stanza"]), true]
-        (s:False) : ["${STZ}", false]
+      val [compiler, compiler?] = compiler-of(file-table[package-filename[e]])
       print(" %_" % [compiler]) when compiler?
       println("")
       val file-set = HashSet<String>()
@@ -220,6 +223,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
 
   for file in files do :
     if kind(file) == `app :
+      val [compiler, compiler?] = compiler-of(file)
       val used-pkgs = to-tuple $ used-packages(packages(file))
       val direct-pkgs = to-tuple $ direct-packages(packages(file))
       val app-filename = obj-filename(name(file))
@@ -234,8 +238,8 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       println("  endif")
       println("endif")
       println("")
-      println("${GEN}/%_: %*" % [app-filename, join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " ")])
-      println("\t${STZ} %_ -o ${GEN}/%_ -pkg ${GEN} -ccflags \"${%__LIBS}\"" % [name(file) app-filename app-filename])
+      println("${GEN}/%_: %* %_" % [app-filename, join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
+      println("\t%_ %_ -o ${GEN}/%_ -pkg ${GEN} -ccflags \"${%__LIBS}\"" % [compiler, name(file) app-filename app-filename])
       println("")
 
 defn InvalidExtensionError (filename:String) :
