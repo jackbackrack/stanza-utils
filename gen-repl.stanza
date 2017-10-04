@@ -15,12 +15,12 @@ defpackage gen-repl :
 
 defn pkg-pathname (pkg-name:Symbol) :
   val home = default<String>(get-env("HOME"), "/Users/jrb/")
-  val path = if contains?(["clib", "core", "collections", "math"], to-string $ pkg-name) : string-join([home "/stanza/pkgs"]) else : "build"
+  val path = if contains?(["clib", "core", "collections", "math", "reader", "stz/algorithms", "parser", "macro-utils"], to-string $ pkg-name) : string-join([home "/stanza/pkgs"]) else : "build"
   val filename = replace(to-string $ pkg-name, '/', '$')
   string-join([path "/" filename ".pkg"])
 
 defn visit-imports (s:OutputStream, pkg-name:Symbol) -> HashSet<Symbol> :
-  ;; println-all(["PKG-NAME " pkg-name " FILENAME " filename])
+  ;; println-all(["IMPORT PKG-NAME " pkg-name " FILENAME " pkg-pathname(pkg-name)])
   val pkg = load-package(pkg-pathname(pkg-name))
   val directs = HashSet<Symbol>()
   defn include-import? (imp:Symbol) :
@@ -44,14 +44,16 @@ defn include-type? (name:Symbol) :
 
 defn print-type (s:OutputStream, var-name, type-name) :
   if include-type?(to-symbol $ var-name) :
-    println-all(s, ["  eval-add-frame-binding(frame, `" var-name ", eval-Type(`" var-name " fn (x) : x is " type-name ", fn (x): x as " type-name "))"])
+    println(s, "  eval-add-frame-binding(frame, `%~, eval-Type(`%~ fn (x) : x is %~, fn (x): x as %~))" %
+                 [var-name, var-name, type-name, type-name])
 
 defn visit (s:OutputStream, pkg-name:Symbol, directs:HashSet<Symbol>,
             visited?:HashSet<Symbol>, visible?:HashSet<Symbol>,
             fns:HashTable<Symbol, List<FnEntry>>) -> False :
   val type-names = IntTable<Symbol>()
-  val direct? = directs[pkg-name]
   val pkg = load-package(pkg-pathname(pkg-name))
+  ;; val direct? = directs[pkg-name]
+  val direct? = true
   defn ref? (x) : x is RefT
   defn public-type? (tt) :
     match(tt) :
@@ -70,48 +72,41 @@ defn visit (s:OutputStream, pkg-name:Symbol, directs:HashSet<Symbol>,
     (lfid:LSFnId) :
       length(targs(fid)) == 0 and all?(ref?, a1(fid)) and ref?(a2(fid)) and all?(public-type?, a1(fid)) and public-type?(a2(fid))
     (rfid:FnId|MultiId) :
-      all?(public-type?, a1(fid)) and public-type?(a2(fid)) and
-      not contains?([`min `max], name(fid)) and
-      not contains?([`minimum, `maximum], name(fid)) 
-      ;; not contains?([`rot `xform], name(fid)) 
-      ;; not (pkg-name == "core" and contains?([`sum, `product, `minimum, `maximum, `qsort!, `lazy-qsort, `append-all], name(fid))) and
-      ;; not (pkg-name == "collections" and contains?([], name(fid))) and
-      ;; not (pkg-name == "utils" and contains?([], name(fid))) and
-      ;; not (pkg-name == "geom" and contains?([`max `min], name(fid))) and
-      ;; not (pkg-name == "ao" and contains?([`max `min], name(fid))) and
-      ;; not (pkg-name == "sob/core/vec" and contains?([`max `min], name(fid))) and
-      ;; not (pkg-name == "sob/core/xml" and contains?([`Element], name(fid))) and
-      ;; not (pkg-name == "sob/core/pcb" and contains?([`rot `xform `Element, `Package], name(fid))) and
-      ;; not (pkg-name == "sob/core/jitpcb" and contains?([`Signal], name(fid))) and
-      ;; not (pkg-name == "sob/core/sob" and contains?([`Type `Pad], name(fid)))
+      val res = true and ;; all?(public-type?, a1(fid)) and public-type?(a2(fid)) and
+        not contains?([`next-int], name(fid)) and
+        not contains?([`min `max], name(fid)) and
+        not contains?([`minimum, `maximum], name(fid))
+      ;; print-all([" (A1 " a1(fid) " = " all?(public-type?, a1(fid)) " A2 " a2(fid) " = " public-type?(a2(fid)) ") "])
+      res
   for ipkg in imports(ids(pkg)) do :
     val imp = package(ipkg)
-    if not visited?[imp] :
-      add(visited?, imp)
-      visit(s, imp, directs, visited?, visible?, fns)
+    ;; if not visited?[imp] :
+    ;;   add(visited?, imp)
+    ;;   visit(s, imp, directs, visited?, visible?, fns)
     for imp in imports(ipkg) do :
       match(id(imp)) :
         (tid:TypeId|LSTypeId) :
-          if visibility(id(imp)) is Public :
-            type-names[n(imp)] = name(tid)
+          type-names[n(imp)] = name(tid)
         (id) : false
   for decl in declarations(ids(pkg)) do :
+    ;; println-all(["CONSIDERING " decl])
     match(id(decl)) :
       (vid:ValId|VarId) :
         if direct? and visibility(id(decl)) is Public :
-          println-all(s, ["  eval-add-frame-binding(frame, `" name(vid) ", " name(vid) ")"])
+          println(s, "  eval-add-frame-binding(frame, `%~, %~)" % [name(vid), name(vid)])
       (vid:LSValId) :
         if direct? and type(vid) is RefT and visibility(id(decl)) is Public :
-          println-all(s, ["  eval-add-frame-binding(frame, `" name(vid) ", " name(vid) ")"])
+          println(s, "  eval-add-frame-binding(frame, `%~, %~)" % [name(vid), name(vid)])
       (tid:TypeId|LSTypeId) :
-        if visibility(id(decl)) is Public :
-          type-names[n(decl)] = name(tid)
-          if direct? :
-            print-type(s, name(tid), name(tid))
+        type-names[n(decl)] = name(tid)
+        if visibility(id(decl)) is Public and direct? :
+          print-type(s, name(tid), name(tid))
       (id) : false
   for decl in declarations(ids(pkg)) do :
+    ;; println-all(["LOOKING AT " decl])
     match(id(decl)) :
       (fid:FnId|MultiId) :
+        ;; println-all(["  D? " direct? " V? " visible?[name(fid)] " IF? " include-function?(fid) " VIS " visibility(id(decl))])
         if (direct? or visible?[name(fid)]) and include-function?(fid) and visibility(id(decl)) is Public :
           add(visible?, name(fid))
           fns[name(fid)] = cons(FnEntry(fid, type-names), get?(fns, name(fid), List()))
@@ -137,7 +132,8 @@ defn dump (pkg-name:String) :
   val fns = HashTable<Symbol, List<FnEntry>>()
   val visited? = HashSet<Symbol>()
   val visible? = HashSet<Symbol>()
-  visit(s, to-symbol $ pkg-name, directs, visited?, visible?, fns)
+  for direct in directs do :
+    visit(s, to-symbol $ direct, directs, visited?, visible?, fns)
   defn extra-ids () :
     ["`core/KeyValue" => "core/KeyValue"
      "`core/Range" => "core/Range"
@@ -166,9 +162,9 @@ defn dump (pkg-name:String) :
   defn targs-str (n:Int) : "" when n == 0 else ("<%,>" % [for i in 0 to n seq : "?"])
   ;; println-all(["TYPES " to-tuple $ values(type-names)])
   for kv in extra-ids() do :
-    println-all(s, ["  eval-add-frame-binding(frame, " key(kv) ", " value(kv) ")"])
+    println(s, "  eval-add-frame-binding(frame, %_, %_)" % [key(kv), value(kv)])
   for kv in extra-types() do :
-    print-type(s, key(kv), value(kv))
+    print-type(s, to-symbol $ key(kv), to-symbol $ value(kv))
   val counter = to-seq(0 to false)
   defn output-fs (fname:Symbol, fs:List<FnEntry>) :
     val anon = symbol-join(["f-" next(counter)])
@@ -194,12 +190,12 @@ defn dump (pkg-name:String) :
     val arity = length(a1(fid))
     if length(value(fs)) > 1 :
       val fname = output-fs(name(fid), value(fs))
-      println-all(s, ["  eval-add-frame-binding(frame, `" name(fid) ", " fname ")"])
+      println(s, "  eval-add-frame-binding(frame, `%~, %~)" % [name(fid), fname])
     else :
       if ntargs > 0 :
-        println-all(s, ["  eval-add-frame-binding(frame, `" name(fid) ", fn " args-str(arity) " : " name(fid) targs-str(ntargs) args-str(arity) ")"])
+        println(s, "  eval-add-frame-binding(frame, `%~, fn %_ : %~%_%_)" % [name(fid), args-str(arity), name(fid), targs-str(ntargs), args-str(arity)])
       else :
-        println-all(s, ["  eval-add-frame-binding(frame, `" name(fid) ", " name(fid) ")"])
+        println(s, "  eval-add-frame-binding(frame, `%~, %~)" % [name(fid), name(fid)])
   
   println-all(s, ["  false"])
   println-all(s, [""])
