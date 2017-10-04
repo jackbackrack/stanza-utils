@@ -238,7 +238,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       println("  endif")
       println("endif")
       println("")
-      println("${GEN}/%_: %* %_" % [app-filename, join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
+      println("${GEN}/%_: %_ %* %_" % [app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
       println("\t%_ %_ -o ${GEN}/%_ -pkg ${GEN} -ccflags \"${%__LIBS}\"" % [compiler, name(file) app-filename app-filename])
       println("")
 
