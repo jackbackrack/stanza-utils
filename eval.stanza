@@ -83,8 +83,15 @@ defn lookup-entry (env:List<Frame>, name:Symbol) -> Entry :
       lookup-frame(frame)        
     throw(UndefinedBindingException(name))
 
+defn canonicalize (name:Symbol) -> Symbol :
+  val s = to-string $ name
+  match(last-index-of-char(s, '/')) :
+    (i:Int) : to-symbol $ s[(i + 1) to false]
+    (f) : name
+
 defn lookup (env:List<Frame>, name:Symbol) -> ? :
-  getter(lookup-entry(env, name))()
+  val cname = canonicalize(name)
+  getter(lookup-entry(env, cname))()
 
 public defn lookup (env:Symbol, name:Symbol) -> ? :
   if key?(*packages*, env) :
