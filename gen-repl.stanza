@@ -13,9 +13,11 @@ defpackage gen-repl :
 ;; TODO: HANDLE AMBIGUOUS REFS WITH ANONYMOUS FUNCTION
 ;; TODO: HANDLE TARGS WITH ANONYMOUS FUNCTION
 
+var stanza-dir = "Users/jrb/stanza"
+
 defn pkg-pathname (pkg-name:Symbol) :
-  val home = default<String>(get-env("HOME"), "/Users/jrb/")
-  val path = if contains?(["clib", "core", "collections", "math", "reader", "stz/algorithms", "parser", "macro-utils"], to-string $ pkg-name) : string-join([home "/stanza/pkgs"]) else : "build"
+  ;; val stanza-dir = default<String>(get-env("STANZADIR"), "/Users/jrb/stanza")
+  val path = if contains?(["clib", "core", "collections", "math", "reader", "stz/algorithms", "parser", "macro-utils"], to-string $ pkg-name) : string-join([stanza-dir "/pkgs"]) else : "build"
   val filename = replace(to-string $ pkg-name, '/', '$')
   string-join([path "/" filename ".pkg"])
 
@@ -204,7 +206,7 @@ defn dump (pkg-name:String) :
 
 defn main () :
   val args = command-line-arguments()
-  dump(args[1])
+  stanza-dir = args[1]
+  dump(args[2])
   
 main()  
-
