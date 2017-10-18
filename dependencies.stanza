@@ -125,7 +125,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
   println("STZ = stanza")
   println("STZ_FLAGS = -pkg ${GEN} ${STZ_OPT}")
   println("STANZADIR = `python stanza-utils/stanza-install-dir.py`")
-  println("STZ_COMPILER_MAIN = ${STANZADIR}/compiler/stz-main.stanza")
+  println("STZ_COMPILER_MAIN = ${STANZADIR}/compiler/stz-driver.stanza")
   println("OS2 := $(strip $(shell uname))")
   println("")
   println("ifeq ($(OS2), Darwin)")
