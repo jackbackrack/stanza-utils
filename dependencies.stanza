@@ -88,8 +88,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
         for pkg in value(kv) do :
           val pkg-name = name!(pkg)
           package-filename[pkg-name] = filename
-          graph[pkg-name] = to-list $ for imp in imports(pkg) seq :
-            name!(package(imp as IImport))
+          graph[pkg-name] = to-list $ for imp in imports(pkg) seq : name!(package(imp as IImport))
           yield(get?(pkg-table, pkg-name, Package(pkg-name, List(), List())))
       yield(File(name(file), kind(file), syntax(file), to-list $ pkgs))
     for file in files0 do :
@@ -152,13 +151,24 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       (s:Syntax) : [string-join(["${GEN}/" value(s) "-stanza"]), true]
       (s:False) : ["${STZ}", false]
   
+  val group-name = HashTable<Symbol, Symbol>()
+  
+  for group in groups do :
+    match(group) :
+      (elts:List<Symbol>) : 
+        for e in elts do :
+          group-name[e] = head(elts)
+      (elt:Symbol) :
+        group-name[elt] = elt
+
   defn print-rule (e:Symbol, team:List<Symbol>) :
     val file = file-table[package-filename[e]]
     if contains?([`std, `app], kind(file)) :
       print("%_: %_" % [pkg-name(e) package-filename[e]])
       for guy in team do :
-        for import in graph[guy] do :
-          print(" %_" % [pkg-name(import)]) when user?(import)
+        for import in unique(seq({ group-name[_] }, graph[guy])) do :
+          if e != import : 
+            print(" %_" % [pkg-name(import)]) when user?(import)
         for dep in dependencies(pkgs[guy]) do :
           print(" %_" % [value(dep)])
       val [compiler, compiler?] = compiler-of(file-table[package-filename[e]])
@@ -174,8 +184,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
   for group in groups do :
     match(group) :
       (elts:List<Symbol>) :
-        for e in elts do :
-          print-rule(e, elts)
+        print-rule(head(elts), elts)
       (elt:Symbol) :
         print-rule(elt, List(elt))
 
