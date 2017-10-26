@@ -153,10 +153,20 @@ defn dump (pkg-name:String) :
           (tv:TGradual) : type-names[n(t)]
           (tv:TTuple) : type-names[n(t)] when length(types(tv)) == 0 else ("($of %_ %,)" % [ type-names[n(t)], seq(type-str{type-names, _}, types(tv)) ])
       (t:TOr): "($or %_ %_)" % [type-str(type-names, a(t)) type-str(type-names, b(t))]
-      (t:TAnd): "($and %_ %_)" % [type-str(type-names, a(t)) type-str(type-names, b(t))]
+      (t:TAnd):
+        if a(t) is TGradual|UnknownT|TUVar|TVar|TCap :
+          type-str(type-names, b(t))
+        else if b(t) is TGradual|UnknownT|TUVar|TVar|TCap :
+          type-str(type-names, a(t))
+        else :
+          "($and %_ %_)" % [type-str(type-names, a(t)) type-str(type-names, b(t))]
       (t:TArrow): "($-> (%,) %_)" % [seq(type-str{type-names, _}, types(a(t) as TTuple)), type-str(type-names, b(t))]
       (t:TTuple): "($tuple %,)" % [seq(type-str{type-names, _}, types(t))]
       (t:RefT): type-str(type-names, type(t))
+      ;; (t:TCap) : "($C)"
+      ;; (t:TPoly) : "($P)"
+      ;; (t:TMixed) : "($M)"
+      ;; (t:TBot) : "($B)"
       (t) : "($?)"      
   defn args-str (n:Int) : "(%,)" % [for i in 0 to n seq : string-join([" a" i])]
   defn args-tops-str (n:Int) : "(%,)" % [for i in 0 to n seq : string-join([" a" i ":?"])]
