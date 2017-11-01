@@ -202,7 +202,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
     println("\t${GEN}/gen-repl ${STANZADIR} %_" % [base])
     println("")
     println("%_: ${GEN}/%_.stanza" % [pkg-name(to-symbol $ obj) obj])
-    println("\t${STZ} ${GEN}/%_.stanza -pkg ${GEN}" % [obj])
+    println("\t${STZ} ${GEN}/%_.stanza ${STZ_FLAGS}" % [obj])
     println("")
 
   val mac-files = to-tuple $ for file in files filter : kind(file) == `mac
@@ -247,8 +247,10 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       println("  endif")
       println("endif")
       println("")
-      println("${GEN}/%_: %_ %* %_" % [app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
-      println("\t%_ %_ -o ${GEN}/%_ -pkg ${GEN} -ccflags \"${%__LIBS}\"" % [compiler, name(file) app-filename app-filename])
+      val imports = join(unique(seq({ pkg-name(group-name[_]) }, filter(user?, direct-pkgs))), " ")
+      println("${GEN}/%_: %_ %* %_" % [app-filename, name(file), imports, compiler when compiler? else ""])
+      ;; println("${GEN}/%_: %_ %* %_" % [app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
+      println("\t%_ %_ -o ${GEN}/%_ ${STZ_FLAGS} -ccflags \"${%__LIBS}\"" % [compiler, name(file) app-filename app-filename])
       println("")
 
 defn InvalidExtensionError (filename:String) :
