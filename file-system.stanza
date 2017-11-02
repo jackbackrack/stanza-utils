@@ -5,17 +5,23 @@ defpackage file-system :
   import collections
   import math
 
-public defn split-pathname (pathname:String) -> [String, String]:
-  val index = last-index-of-char(pathname, '/')
+public defn split-pathname (pathname:String, c:Char) -> [String, String]:
+  val index = last-index-of-char(pathname, c)
   match(index) :
     (f:False) : ["", pathname]
     (i:Int)   : [pathname[0 to (i + 1)], pathname[(i + 1) to false]]
 
 public defn dir-name (pathname:String) -> String :
-  split-pathname(pathname)[0]
+  split-pathname(pathname, '/')[0]
 
 public defn base-name (pathname:String) -> String :
-  split-pathname(pathname)[1]
+  split-pathname(pathname, '/')[1]
+
+public defn prefix-name (pathname:String) -> String :
+  split-pathname(pathname, '.')[0]
+
+public defn suffix-name (pathname:String) -> String :
+  split-pathname(pathname, '.')[1]
 
 extern malloc: (long) -> ptr<byte>
 extern free: (ptr<byte>) -> int
