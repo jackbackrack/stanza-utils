@@ -142,8 +142,15 @@ public defn gen-dependencies (all-files:Seqable<File>) :
   println("  endif")
   println("endif")
   println("")
+
+  print("all:")
+  for file in filter({ kind(_) == `app }, files) do :
+    print(" ${GEN}/%_" % [obj-filename(name(file))])
+  println("\n\tmkdir -p build")
+  println("")
+
   println("clean:")
-  println("\trm -f ${GEN}/*; echo \"build products\" > ${GEN}/readme.txt")
+  println("\trm -f ${GEN}/*")
   println("")
 
   defn compiler-of (file:File) -> [String, True|False] :
@@ -250,7 +257,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       val imports = join(unique(seq({ pkg-name(group-name[_]) }, filter(user?, direct-pkgs))), " ")
       println("${GEN}/%_: %_ %* %_" % [app-filename, name(file), imports, compiler when compiler? else ""])
       ;; println("${GEN}/%_: %_ %* %_" % [app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
-      println("\t%_ %_ -o ${GEN}/%_ ${STZ_FLAGS} -ccflags \"${%__LIBS}\"" % [compiler, name(file) app-filename app-filename])
+      println("\t%_ %_ -o ${GEN}/%_ -s ${GEN}/%_.s ${STZ_FLAGS} -ccflags \"${%__LIBS}\"" % [compiler, name(file) app-filename app-filename app-filename])
       println("")
 
 defn InvalidExtensionError (filename:String) :
