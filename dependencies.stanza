@@ -121,7 +121,6 @@ public defn gen-dependencies (all-files:Seqable<File>) :
         if not contains?(seq(name, packages(file)), name!(package)) :
           yield(name!(package) => Package(name!(package), List(), List()))
       
-  println("GEN = build")
   println("STZ = stanza")
   println("STZ_FLAGS = -pkg ${GEN} ${STZ_OPT}")
   println("STANZADIR = `python stanza-utils/stanza-install-dir.py`")
@@ -146,7 +145,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
   print("all:")
   for file in filter({ kind(_) == `app }, files) do :
     print(" ${GEN}/%_" % [obj-filename(name(file))])
-  println("\n\tmkdir -p build")
+  println("\n\tmkdir -p ${GEN}")
   println("")
 
   println("clean:")
