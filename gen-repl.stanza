@@ -15,15 +15,15 @@ defpackage gen-repl :
 
 var stanza-dir = "Users/jrb/stanza"
 
-defn pkg-pathname (pkg-name:Symbol) :
+defn pkg-pathname (build-name:String, pkg-name:Symbol) :
   ;; val stanza-dir = default<String>(get-env("STANZADIR"), "/Users/jrb/stanza")
-  val path = if contains?(["clib", "core", "collections", "math", "reader", "stz/algorithms", "parser", "macro-utils"], to-string $ pkg-name) : string-join([stanza-dir "/pkgs"]) else : "build"
+  val path = if contains?(["clib", "core", "collections", "math", "reader", "stz/algorithms", "parser", "macro-utils"], to-string $ pkg-name) : string-join([stanza-dir "/pkgs"]) else : build-name
   val filename = replace(to-string $ pkg-name, '/', '$')
   string-join([path "/" filename ".pkg"])
 
-defn visit-imports (s:OutputStream, pkg-name:Symbol) -> HashSet<Symbol> :
+defn visit-imports (s:OutputStream, build-name:String, pkg-name:Symbol) -> HashSet<Symbol> :
   ;; println-all(["IMPORT PKG-NAME " pkg-name " FILENAME " pkg-pathname(pkg-name)])
-  val pkg = load-package(pkg-pathname(pkg-name))
+  val pkg = load-package(pkg-pathname(build-name, pkg-name))
   val directs = HashSet<Symbol>()
   defn include-import? (imp:Symbol) :
     not (imp == `clib or (pkg-name == "core" and contains?([`collections `core], imp)) or (pkg-name == "collections" and contains?([`collections], imp)))
@@ -49,11 +49,11 @@ defn print-type (s:OutputStream, var-name, type-name) :
     println(s, "  eval-add-frame-binding(frame, `%~, eval-Type(`%~ fn (x) : x is %~, fn (x): x as %~))" %
                  [var-name, var-name, type-name, type-name])
 
-defn visit (s:OutputStream, pkg-name:Symbol, directs:HashSet<Symbol>,
+defn visit (s:OutputStream, build-name:String, pkg-name:Symbol, directs:HashSet<Symbol>,
             visited?:HashSet<Symbol>, visible?:HashSet<Symbol>,
             fns:HashTable<Symbol, List<FnEntry>>) -> False :
   val type-names = IntTable<Symbol>()
-  val pkg = load-package(pkg-pathname(pkg-name))
+  val pkg = load-package(pkg-pathname(build-name, pkg-name))
   ;; val direct? = directs[pkg-name]
   val direct? = true
   defn ref? (x) : x is RefT
@@ -119,13 +119,13 @@ defn visit (s:OutputStream, pkg-name:Symbol, directs:HashSet<Symbol>,
       (id) : false
   false
 
-defn dump (pkg-name:String) :
+defn dump (build-name:String, pkg-name:String) :
   val filename = replace(pkg-name, '/', '$')
-  val s = FileOutputStream(string-join(["build/eval-" filename ".stanza"]))
+  val s = FileOutputStream(string-join([build-name "/eval-" filename ".stanza"]))
   println-all(s, ["defpackage eval-" pkg-name ":"])
   println-all(s, ["  import eval with:"])
   println-all(s, ["     prefix => eval-"])
-  val directs = visit-imports(s, to-symbol $ pkg-name)
+  val directs = visit-imports(s, build-name, to-symbol $ pkg-name)
   println-all(s, [""])
   println-all(s, ["defn fab-pkg () :"])
   print-all(s, ["  val pkg = eval-Package(`" pkg-name ", [])"])
@@ -135,7 +135,7 @@ defn dump (pkg-name:String) :
   val visited? = HashSet<Symbol>()
   val visible? = HashSet<Symbol>()
   for direct in directs do :
-    visit(s, to-symbol $ direct, directs, visited?, visible?, fns)
+    visit(s, build-name, to-symbol $ direct, directs, visited?, visible?, fns)
   defn extra-ids () :
     ["`core/KeyValue" => "core/KeyValue"
      "`core/Range" => "core/Range"
@@ -216,7 +216,7 @@ defn dump (pkg-name:String) :
 
 defn main () :
   val args = command-line-arguments()
-  stanza-dir = args[1]
-  dump(args[2])
+  stanza-dir = args[2]
+  dump(args[1], args[3])
   
 main()  

@@ -205,7 +205,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
     val obj = obj-filename(name(file))
     val base = obj[length("eval-") to false]
     println("${GEN}/%_.stanza: ${GEN}/gen-repl ${GEN}/eval.pkg %_" % [obj pkg-name(to-symbol $ base)])
-    println("\t${GEN}/gen-repl ${STANZADIR} %_" % [base])
+    println("\t${GEN}/gen-repl ${GEN} ${STANZADIR} %_" % [base])
     println("")
     println("%_: ${GEN}/%_.stanza" % [pkg-name(to-symbol $ obj) obj])
     println("\t${STZ} ${GEN}/%_.stanza ${STZ_FLAGS}" % [obj])
