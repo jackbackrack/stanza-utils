@@ -214,7 +214,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
   val mac-files = to-tuple $ for file in files filter : kind(file) == `mac
   for file in mac-files do :
     println("${GEN}/%_-stanza: %_" % [obj-filename(name(file)) name(file)])
-    println("\tstanza ${STZ_COMPILER_MAIN} %_ -flags OPTIMIZE -o ${GEN}/%_-stanza" % [name(file) obj-filename(name(file))])
+    println("\tstanza %_ ${STZ_COMPILER_MAIN} -flags OPTIMIZE -o ${GEN}/%_-stanza" % [name(file) obj-filename(name(file))])
     println("")
 
   defn used-packages (pkg-roots:Seqable<Package>) :
