@@ -72,10 +72,10 @@ defn visit (s:OutputStream, build-name:String, pkg-name:Symbol, directs:HashSet<
   defn include-function? (fid:LSFnId|FnId|MultiId) :
     match(fid) :
     (lfid:LSFnId) :
-      length(targs(fid)) == 0 and all?(ref?, a1(fid)) and ref?(a2(fid)) and all?(public-type?, a1(fid)) and public-type?(a2(fid))
+       not contains?([`next-int], name(fid)) and
+         length(targs(fid)) == 0 and all?(ref?, a1(fid)) and ref?(a2(fid)) and all?(public-type?, a1(fid)) and public-type?(a2(fid))
     (rfid:FnId|MultiId) :
       val res = true and ;; all?(public-type?, a1(fid)) and public-type?(a2(fid)) and
-        not contains?([`next-int], name(fid)) and
         not contains?([`min `max], name(fid)) and
         not contains?([`minimum, `maximum], name(fid))
       ;; print-all([" (A1 " a1(fid) " = " all?(public-type?, a1(fid)) " A2 " a2(fid) " = " public-type?(a2(fid)) ") "])
