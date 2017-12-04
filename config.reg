@@ -15,6 +15,11 @@ defregistry stanza-utils :
   file "compiler/stz-tgt-ir.stanza" stz
   file "compiler/stz-primitives.stanza" stz
   file "eval.stanza"
+  file "time.c"
+  file "time.stanza" :
+    package time :
+      dependency "${GEN}/time.o"
+      link * "${GEN}/time.o"
   file "socket.c"
   file "socket.stanza" :
     package socket :
