@@ -139,7 +139,23 @@ defn dump (build-name:String, pkg-name:String) :
   defn extra-ids () :
     ["`core/KeyValue" => "core/KeyValue"
      "`core/Range" => "core/Range"
+     "`core/Generator" => "fn (thunk) : core/Generator<?>(thunk)"
      "`core/dynamic-wind" => "core/dynamic-wind",
+     "`core/LabeledScope" => "fn (thunk) : core/LabeledScope<?>(thunk)"
+     "`core/LabeledScope*" => "LabeledScope*"
+     "`core/with-attempt" => "core/with-attempt"
+     "`core/with-finally" => "core/with-finally"
+     "`core/with-exception-handler" => "core/with-exception-handler"
+     "`core/throw" => "core/throw"
+     "`core/with-resource" => "core/with-resource"
+     "`core/find!" => "core/find!"
+     "`core/find" => "core/find"
+     ;; "`core/Equalable" => "core/Equalable"
+     "`core/filter" => "core/filter"
+     "`core/fatal" => "core/fatal"
+     "`core/cons" => "core/cons"
+     "`core/append" => "core/append"
+     "`core/List" => "core/List"
      "to-symbol(\"true\")" => "true",
      "to-symbol(\"false\")" => "false"]
   defn extra-types () :
