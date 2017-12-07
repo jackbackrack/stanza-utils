@@ -5,21 +5,28 @@ defpackage file-system :
   import collections
   import math
 
-public defn split-pathname (pathname:String) -> [String, String]:
-  val index = last-index-of-char(pathname, '/')
+public defn split-pathname (pathname:String, c:Char) -> [String, String]:
+  val index = last-index-of-char(pathname, c)
   match(index) :
     (f:False) : ["", pathname]
     (i:Int)   : [pathname[0 to (i + 1)], pathname[(i + 1) to false]]
 
 public defn dir-name (pathname:String) -> String :
-  split-pathname(pathname)[0]
+  split-pathname(pathname, '/')[0]
 
 public defn base-name (pathname:String) -> String :
-  split-pathname(pathname)[1]
+  split-pathname(pathname, '/')[1]
+
+public defn prefix-name (pathname:String) -> String :
+  split-pathname(pathname, '.')[0]
+
+public defn suffix-name (pathname:String) -> String :
+  split-pathname(pathname, '.')[1]
 
 extern malloc: (long) -> ptr<byte>
 extern free: (ptr<byte>) -> int
 extern getcwd: (ptr<byte>, int) -> ptr<byte>
+extern chdir: (ptr<byte>) -> int
 extern printf: (ptr<byte>, ? ...) -> int
 extern opendir: (ptr<byte>) -> ptr<?>
 extern readdirent: (ptr<?>, ptr<?>) -> int
@@ -70,6 +77,13 @@ public lostanza defn get-cwd () -> ref<String> :
   val bytes = call-c malloc(256)
   val res   = call-c getcwd(bytes, 256)
   return String(res)
+
+public lostanza defn ch-dir (dirname:ref<String>) -> ref<True|False> :
+  val res = call-c chdir(addr!(dirname.chars))
+  if res == 0L :
+    return true
+  else :
+    return false
 
 lostanza defn entry-name (ent:ref<DirEntry>) -> ref<String> :
   return String(ent.name)
