@@ -83,8 +83,15 @@ defn lookup-entry (env:List<Frame>, name:Symbol) -> Entry :
       lookup-frame(frame)        
     throw(UndefinedBindingException(name))
 
+defn canonicalize (name:Symbol) -> Symbol :
+  val s = to-string $ name
+  match(last-index-of-char(s, '/')) :
+    (i:Int) : to-symbol $ s[(i + 1) to false]
+    (f) : name
+
 defn lookup (env:List<Frame>, name:Symbol) -> ? :
-  getter(lookup-entry(env, name))()
+  val cname = canonicalize(name)
+  getter(lookup-entry(env, cname))()
 
 public defn lookup (env:Symbol, name:Symbol) -> ? :
   if key?(*packages*, env) :
@@ -188,6 +195,7 @@ defmethod print (o:OutputStream, e:UnknownMultiException) :
 public defn eval (env:List<Frame>, sexpr) -> ? :
   ;; println-all(["EVAL: " sexpr])
   val res = 
+    ;; indented({
     match(sexpr) :
       (i:Int) : i
       (c:Char) : c
@@ -205,6 +213,8 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
             val fun  = eval(env, fexp)
             val args = map(eval{env, _}, tail(tail(l)))
             apply(fun, args)
+          `$of :
+            eval(env, l[1])
           `$match :
             val exprs    = map(eval{env, _}, l[1])
             val branches = tail(tail(l))
@@ -276,6 +286,7 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
             eval-begin(env, tail(l))
           else :
             false
+  ;;   })
   ;; println-all(["EVAL -> " res])
   res
 

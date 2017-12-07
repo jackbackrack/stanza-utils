@@ -39,7 +39,7 @@ public defn rndf () -> Float :
 public defn rndf (lo:Float, hi:Float) -> Float :
   val r = rndf()
   val d = hi - lo
-  lo + (r % d)
+  lo + (r * d)
 
 public defn my-ensure-index-in-bounds (xs:Lengthable, i:Int) :
   if i < 0 or i >= length(xs) :
