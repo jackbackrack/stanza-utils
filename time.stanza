@@ -1,0 +1,10 @@
+defpackage time :
+  import core
+
+extern get_time_string: (ptr<byte>) -> ptr<byte>
+
+public lostanza defn get-time-string (format:ref<String>) -> ref<String> :
+  val res = call-c get_time_string(addr!(format.chars))
+  return String(res)
+
+

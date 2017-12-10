@@ -38,6 +38,9 @@ defpackage stz/dependencies :
    import stz/ast-printer-lang
    import registry
 
+var *build-dir* = "debug"
+var *build-opt* = ""
+
 defn macroexpand (forms:List) -> List :
   val es = parse-syntax[core / #exps!](forms)
   cons(`$begin, es)
@@ -61,7 +64,7 @@ defn filename-packages (filenames:Seqable<String>) -> HashTable<String,List<IPac
     filename => packages(filename)
 
 defn pkg-name (name:Symbol) -> String :
-  string-join(["${GEN}/" replace(to-string $ name, "/", "$$") ".pkg"])
+  string-join([*build-dir* "/" replace(to-string $ name, "/", "$$") ".pkg"])
 
 defn non-suffix (filename:String) :
   val index = last-index-of-char(filename, '.')
@@ -121,34 +124,22 @@ public defn gen-dependencies (all-files:Seqable<File>) :
         if not contains?(seq(name, packages(file)), name!(package)) :
           yield(name!(package) => Package(name!(package), List(), List()))
       
-  println("GEN = build")
-  println("STZ = stanza")
-  println("STZ_FLAGS = -pkg ${GEN} ${STZ_OPT}")
-  println("STANZADIR = `python stanza-utils/stanza-install-dir.py`")
-  println("STZ_COMPILER_MAIN = ${STANZADIR}/compiler/stz-driver.stanza")
-  println("OS2 := $(strip $(shell uname))")
+  println("%__STZ_FLAGS = -pkg %_ %_" % [*build-dir* *build-dir* *build-opt*])
   println("")
-  println("ifeq ($(OS2), Darwin)")
-  println("  $(info Compiling for Darwin)")
-  println("  CFLAGS = -DMACOSX=1")
-  println("  LIBS = $(COMMON_LIBS)")
-  println("else")
-  println("  $(info Compiling for non Darwin)")
-  println("  OS := $(strip $(shell uname -o))")
-  println("  ifeq ($(OS), GNU/Linux)")
-  println("    $(info Compiling for GNU/Linux)")
-  println("    CFLAGS = ")
-  println("    LIBS = $(COMMON_LIBS) -lm")
-  println("  endif")
-  println("endif")
+
+  print("%_/all:" % [*build-dir*])
+  for file in filter({ kind(_) == `app }, files) do :
+    print(" %_/%_" % [*build-dir* obj-filename(name(file))])
+  println("\n\tmkdir -p %_" % [*build-dir*])
   println("")
-  println("clean:")
-  println("\trm -f ${GEN}/*; echo \"build products\" > ${GEN}/readme.txt")
+
+  println("%_/clean: "% [*build-dir*])
+  println("\trm -f %_/*" % [*build-dir*])
   println("")
 
   defn compiler-of (file:File) -> [String, True|False] :
     match(syntax(file)) :
-      (s:Syntax) : [string-join(["${GEN}/" value(s) "-stanza"]), true]
+      (s:Syntax) : [string-join([*build-dir* "/" value(s) "-stanza"]), true]
       (s:False) : ["${STZ}", false]
   
   val group-name = HashTable<Symbol, Symbol>()
@@ -178,7 +169,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       for pkg-name in team do :
         add(file-set, package-filename[pkg-name]) when user?(pkg-name)
       val files = to-tuple $ file-set
-      println("\t%_ %_ %_" % [compiler string-join(files, " ") "${STZ_FLAGS}"])
+      println("\t%_ %_ ${%__STZ_FLAGS}" % [compiler string-join(files, " ") *build-dir*])
       println("")
 
   for group in groups do :
@@ -190,25 +181,25 @@ public defn gen-dependencies (all-files:Seqable<File>) :
 
   val c-files = to-tuple $ for file in all-files filter : suffix?(name(file), ".c")
   for file in c-files do :
-    println("${GEN}/%_.o: %_" % [obj-filename(name(file)) name(file)])
-    println("\t${CC} -c ${CFLAGS} -o ${GEN}/%_.o %_" % [obj-filename(name(file)) name(file)])
+    println("%_/%_.o: %_" % [*build-dir* obj-filename(name(file)) name(file)])
+    println("\t${CC} -c ${CFLAGS} -o %_/%_.o %_" % [*build-dir* obj-filename(name(file)) name(file)])
     println("")
 
   val gen-files = to-tuple $ for file in files filter : kind(file) == `gen
   for file in gen-files do :
     val obj = obj-filename(name(file))
     val base = obj[length("eval-") to false]
-    println("${GEN}/%_.stanza: ${GEN}/gen-repl ${GEN}/eval.pkg %_" % [obj pkg-name(to-symbol $ base)])
-    println("\t${GEN}/gen-repl ${STANZADIR} %_" % [base])
+    println("%_/%_.stanza: %_/gen-repl %_/eval.pkg %_" % [*build-dir* obj *build-dir* *build-dir* pkg-name(to-symbol $ base)])
+    println("\t%_/gen-repl %_ ${STANZADIR} %_" % [*build-dir* *build-dir* base])
     println("")
-    println("%_: ${GEN}/%_.stanza" % [pkg-name(to-symbol $ obj) obj])
-    println("\t${STZ} ${GEN}/%_.stanza -pkg ${GEN}" % [obj])
+    println("%_: %_/%_.stanza" % [pkg-name(to-symbol $ obj) *build-dir* obj])
+    println("\t${STZ} %_/%_.stanza ${%__STZ_FLAGS}" % [*build-dir* obj *build-dir*])
     println("")
 
   val mac-files = to-tuple $ for file in files filter : kind(file) == `mac
   for file in mac-files do :
-    println("${GEN}/%_-stanza: %_" % [obj-filename(name(file)) name(file)])
-    println("\tstanza ${STZ_COMPILER_MAIN} %_ -flags OPTIMIZE -o ${GEN}/%_-stanza" % [name(file) obj-filename(name(file))])
+    println("%_/%_-stanza: %_" % [*build-dir* obj-filename(name(file)) name(file)])
+    println("\tstanza %_ ${STZ_COMPILER_MAIN} -flags OPTIMIZE -o %_/%_-stanza" % [name(file) *build-dir* obj-filename(name(file))])
     println("")
 
   defn used-packages (pkg-roots:Seqable<Package>) :
@@ -247,8 +238,10 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       println("  endif")
       println("endif")
       println("")
-      println("${GEN}/%_: %_ %* %_" % [app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
-      println("\t%_ %_ -o ${GEN}/%_ -pkg ${GEN} -ccflags \"${%__LIBS}\"" % [compiler, name(file) app-filename app-filename])
+      val imports = join(unique(seq({ pkg-name(group-name[_]) }, filter(user?, direct-pkgs))), " ")
+      println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), imports, compiler when compiler? else ""])
+      ;; println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
+      println("\t%_ %_ -o %_/%_ -s %_/%_.s ${%__STZ_FLAGS} -ccflags \"${%__LIBS}\"" % [compiler, name(file) *build-dir* app-filename *build-dir* app-filename *build-dir* app-filename])
       println("")
 
 defn InvalidExtensionError (filename:String) :
@@ -261,7 +254,30 @@ defn main () :
   val input = to-tuple $ registry-files(filename)
   ;; println(input)
   ;; println(stanza-files)
-  gen-dependencies(input)
 
+  println("STZ = stanza")
+  println("STANZADIR = `python stanza-utils/stanza-install-dir.py`")
+  println("STZ_COMPILER_MAIN = ${STANZADIR}/compiler/stz-driver.stanza")
+  println("OS2 := $(strip $(shell uname))")
+  println("")
+  println("ifeq ($(OS2), Darwin)")
+  println("  $(info Compiling for Darwin)")
+  println("  CFLAGS = -DMACOSX=1")
+  println("  LIBS = $(COMMON_LIBS)")
+  println("else")
+  println("  $(info Compiling for non Darwin)")
+  println("  OS := $(strip $(shell uname -o))")
+  println("  ifeq ($(OS), GNU/Linux)")
+  println("    $(info Compiling for GNU/Linux)")
+  println("    CFLAGS = ")
+  println("    LIBS = $(COMMON_LIBS) -lm")
+  println("  endif")
+  println("endif")
+  println("")
+
+  for [dir, opt] in [["release", "-optimize"] ["debug" ""]] do :
+    let-var *build-dir* = dir :
+      let-var *build-opt* = opt :
+        gen-dependencies(input)
 
 main()
