@@ -93,13 +93,13 @@ public defn gen-dependencies (all-files:Seqable<File>) :
           package-filename[pkg-name] = filename
           graph[pkg-name] = to-list $ for imp in imports(pkg) seq : name!(package(imp as IImport))
           yield(get?(pkg-table, pkg-name, Package(pkg-name, List(), List())))
-      yield(File(name(file), kind(file), syntax(file), to-list $ pkgs))
+      yield(File(name(file), kind(file), flags(file), syntax(file), to-list $ pkgs))
     for file in files0 do :
       if kind(file) == `gen :
         val pkg = Package(to-symbol $ obj-filename(name(file)), List(), List())
         package-filename[name(pkg)] = name(file)
         graph[name(pkg)] = List()
-        yield(File(name(file), kind(file), syntax(file), List(pkg)))
+        yield(File(name(file), kind(file), flags(file), syntax(file), List(pkg)))
 
   ;; println-all(["FILES " files])
 
@@ -182,7 +182,15 @@ public defn gen-dependencies (all-files:Seqable<File>) :
   val c-files = to-tuple $ for file in all-files filter : suffix?(name(file), ".c")
   for file in c-files do :
     println("%_/%_.o: %_" % [*build-dir* obj-filename(name(file)) name(file)])
-    println("\t${CC} -c ${CFLAGS} -o %_/%_.o %_" % [*build-dir* obj-filename(name(file)) name(file)])
+    val flags = "" when flags(file) is False else flags(file)
+    println("\t${CC} %_ -c ${CFLAGS} -o %_/%_.o %_" % [flags *build-dir* obj-filename(name(file)) name(file)])
+    println("")
+
+  val cpp-files = to-tuple $ for file in all-files filter : suffix?(name(file), ".cpp")
+  for file in cpp-files do :
+    println("%_/%_.o: %_" % [*build-dir* obj-filename(name(file)) name(file)])
+    val flags = "" when flags(file) is False else flags(file)
+    println("\tc++ %_ -c ${CFLAGS} -o %_/%_.o %_" % [flags *build-dir* obj-filename(name(file)) name(file)])
     println("")
 
   val gen-files = to-tuple $ for file in files filter : kind(file) == `gen

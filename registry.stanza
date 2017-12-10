@@ -19,6 +19,7 @@ defmethod print (o:OutputStream, e:Include) :
 public defstruct File <: Equalable :
   name : String
   kind : Symbol
+  flags : False|String
   syntax: False|Syntax
   packages: List<Package>
 
@@ -26,7 +27,7 @@ defmethod equal? (a:File, b:File) -> True|False :
   name(a) == name(b)
 
 defmethod print (o:OutputStream, e:File) :
-  print(o, "File(%_, %_, %_, %_)" % [name(e), kind(e), syntax(e), packages(e)])
+  print(o, "File(%_, %_, %_, %_)" % [name(e), kind(e), flags(e), syntax(e), packages(e)])
 
 public defstruct Package <: Equalable :
   name : Symbol
@@ -88,7 +89,7 @@ public defn registry-files (filename:String) :
       `stz : "../stanza/"
       `gen : "build/"
       else : registry-dirname
-    File(string-join([dir name(file)]), kind(file), syntax(file), packages(file))
+    File(string-join([dir name(file)]), kind(file), flags(file), syntax(file), packages(file))
   unique(reduce(cat, seq(reloc-pathname, files(reg)), seq({ registry-files(config-name(pathname(_))) }, includes(reg))))
 
 ;============================================================
@@ -152,17 +153,22 @@ defsyntax registry-ir :
   defrule kind = ()    : `std ;; default normal file
 
   defproduction file: File
-  defrule file = (file ?name:#string! ?a:#kind : (?syntax:#syntax ?pkgs:#package ...)) :
-    File(name, a, syntax, pkgs)
+  defrule file = (file ?name:#string! ?a:#kind : (?syntax:#syntax  ?flags:#flags ?pkgs:#package ...)) :
+    File(name, a, flags, syntax, pkgs)
   defrule file = (file ?name:#string! ?a:#kind) :
-    File(name, a, false, List())
+    File(name, a, false, false, List())
   defrule file = (file ?name:#string!) :
-    File(name, `std, false, List())
+    File(name, `std, false, false, List())
 
   ;===== Link =====
   defproduction link: Link
   defrule link = (link ?os:#symbol! ?libs:#string!) :
     Link(os, libs)
+
+  ;===== Flags =====
+  defproduction flags: False|String
+  defrule flags = (flags ?s:#string) : s
+  defrule flags = () : false
 
   ;===== Dependency =====
   defproduction dependency: Dependency
