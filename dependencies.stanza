@@ -128,7 +128,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
   println("")
 
   print("%_/all:" % [*build-dir*])
-  for file in filter({ kind(_) == `app }, files) do :
+  for file in filter({ contains?([`app, `plugin], _) }, files) do :
     print(" %_/%_" % [*build-dir* obj-filename(name(file))])
   println("\n\tmkdir -p %_" % [*build-dir*])
   println("")
@@ -154,9 +154,12 @@ public defn gen-dependencies (all-files:Seqable<File>) :
 
   defn print-rule (e:Symbol, team:List<Symbol>) :
     val file = file-table[package-filename[e]]
-    if contains?([`std, `app], kind(file)) :
+    if contains?([`std, `app, `plugin], kind(file)) :
       print("%_: %_" % [pkg-name(e) package-filename[e]])
       for guy in team do :
+        if not key?(graph, guy) : println("UNABLE TO FIND %_ FROM %_" % [guy, e])
+        for e in graph[guy] do :
+          if not key?(group-name, e) : println("UNABLE TO FIND GROUP-NAME OF %_" % [e])
         for import in unique(seq({ group-name[_] }, graph[guy])) do :
           if e != import : 
             print(" %_" % [pkg-name(import)]) when user?(import)
@@ -230,7 +233,7 @@ public defn gen-dependencies (all-files:Seqable<File>) :
             yield(link)
 
   for file in files do :
-    if kind(file) == `app :
+    if contains?([`app, `plugin], kind(file)) :
       val [compiler, compiler?] = compiler-of(file)
       val used-pkgs = to-tuple $ used-packages(packages(file))
       val direct-pkgs = to-tuple $ direct-packages(packages(file))
@@ -238,18 +241,22 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       val mac-links = os-links(`Darwin, used-pkgs)
       val linux-links = os-links(`GNU/Linux, used-pkgs)
       println("ifeq ($(OS2), Darwin)")
-      println("  %__LIBS = %_" % [app-filename, string-join(seq(value, mac-links), " ")])
+      val mac-extra-flags = ["-dynamiclib"] when kind(file) == `plugin else []
+      println("  %__FLAGS = %_" % [app-filename, string-join(cat(seq(value, mac-links), mac-extra-flags), " ")])
+      println("  %__APP = %_%_" % [app-filename, app-filename, ".dylib" when kind(file) == `plugin else ""])
       println("else")
       println("  OS := $(strip $(shell uname -o))")
       println("  ifeq ($(OS), GNU/Linux)")
-      println("    %__LIBS = %_" % [app-filename, string-join(seq(value, linux-links), " ")])
+      val linux-extra-flags = ["-shared"] when kind(file) == `plugin else []
+      println("    %__FLAGS = %_" % [app-filename, string-join(cat(seq(value, linux-links), linux-extra-flags), " ")])
+      println("    %__APP = %_%_" % [app-filename, app-filename, ".so" when kind(file) == `plugin else ""])
       println("  endif")
       println("endif")
       println("")
       val imports = join(unique(seq({ pkg-name(group-name[_]) }, filter(user?, direct-pkgs))), " ")
       println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), imports, compiler when compiler? else ""])
       ;; println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
-      println("\t%_ %_ -o %_/%_ -s %_/%_.s ${%__STZ_FLAGS} -ccflags \"${%__LIBS}\"" % [compiler, name(file) *build-dir* app-filename *build-dir* app-filename *build-dir* app-filename])
+      println("\t%_ %_ -o %_/${%__APP} -s %_/%_.s ${%__STZ_FLAGS} -ccflags \"${%__FLAGS}\"" % [compiler, name(file) *build-dir* app-filename *build-dir* app-filename *build-dir* app-filename])
       println("")
 
 defn InvalidExtensionError (filename:String) :
@@ -260,7 +267,7 @@ defn InvalidExtensionError (filename:String) :
 defn main () :
   val filename = command-line-arguments()[1]
   val input = to-tuple $ registry-files(filename)
-  ;; println(input)
+  ;; println("# %_" % [input])
   ;; println(stanza-files)
 
   println("STZ = stanza")

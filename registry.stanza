@@ -27,7 +27,7 @@ defmethod equal? (a:File, b:File) -> True|False :
   name(a) == name(b)
 
 defmethod print (o:OutputStream, e:File) :
-  print(o, "File(%_, %_, %_, %_)" % [name(e), kind(e), flags(e), syntax(e), packages(e)])
+  print(o, "File(%_, %_, %_, %_, %_)" % [name(e), kind(e), flags(e), syntax(e), packages(e)])
 
 public defstruct Package <: Equalable :
   name : Symbol
@@ -147,6 +147,7 @@ defsyntax registry-ir :
   ;===== File =====
   defproduction kind: Symbol
   defrule kind = (app) : `app ;; top level app file
+  defrule kind = (plugin) : `plugin ;; plugin file
   defrule kind = (stz) : `stz ;; stanza system file
   defrule kind = (gen) : `gen ;; generated file in build directory
   defrule kind = (mac) : `mac ;; macros to be turned into a compiler
