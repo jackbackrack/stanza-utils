@@ -1,0 +1,46 @@
+defpackage dlopen :
+  import core
+
+extern dlopen : (ptr<byte>, int) -> ptr<?>
+extern dlerror : () -> ptr<byte>
+extern dlsym : (ptr<?>, ptr<byte>) -> ptr<?>
+extern dlclose : (ptr<?>) -> int
+extern malloc : (long) -> ptr<?>
+
+public lostanza deftype DynamicLibrary :
+  value : ptr<?>
+
+public lostanza deftype DynamicSymbol :
+  value : ptr<?>
+
+val RTLD_LAZY = 1
+
+public lostanza defn dl-open (filename:ref<String>) -> ref<DynamicLibrary> :
+  return new DynamicLibrary{ call-c dlopen(addr!(filename.chars), RTLD_LAZY.value) }
+
+public lostanza defn dl-error () -> ref<String> :
+  val str = call-c dlerror()
+  return String( str )
+
+public lostanza defn dl-sym (dl:ref<DynamicLibrary>, name:ref<String>) -> ref<DynamicSymbol> :
+  return new DynamicSymbol{ call-c dlsym(dl.value, addr!(name.chars)) }
+
+public lostanza defn dl-close (dl:ref<DynamicLibrary>) -> ref<Int> :
+  return new Int{ call-c dlclose(dl.value) }
+
+public lostanza defn call-string (f:ref<DynamicSymbol>, arg:ref<String>) -> ref<String> :
+  val res = call-c [f.value as ptr<((ptr<byte>) -> ptr<byte>)>](addr!(arg.chars))
+  return String(res)
+
+lostanza defn call-main (f:ref<DynamicSymbol>) -> ref<False> :
+  val args = (call-c malloc(8L)) as ptr<ptr<byte>>
+  val arg0 = (call-c malloc(1L)) as ptr<byte>
+  arg0[0] = 0 as byte
+  args[0] = arg0
+  call-c [f.value as ptr<((int, ptr<ptr<byte>>) -> int)>](1, args)
+  return false
+
+public defn stanza-init (dl:DynamicLibrary) :
+  val main = dl-sym(dl, "main")
+  call-main(main)
+  false
