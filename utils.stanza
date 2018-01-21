@@ -7,6 +7,9 @@ defpackage utils :
 
 ;;; GENERAL
 
+public defn f+ (a:Float, b:Float) : a + b ;; NEEDED FOR REDUCE BECAUSE OF BUG IN TYPE INFERENCE
+public defn i+ (a:Int, b:Int) : a + b     ;; NEEDED FOR REDUCE BECAUSE OF BUG IN TYPE INFERENCE
+
 public defn qsort-on<?T,?S> (key:T -> ?S&Comparable<S>, coll:Seqable<?T>) :
   lazy-qsort(coll, compare{key(_), key(_)})
 
