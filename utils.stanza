@@ -6,7 +6,7 @@ defpackage utils :
   import math
   import reader
 
-defn to-stanza (any:Token) -> ? :
+public defn to-stanza (any:Token) -> ? :
   match(item(any)) :
     (x:Int|Float|Double|String) :
       x
