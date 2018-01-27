@@ -241,14 +241,16 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       val mac-links = os-links(`Darwin, used-pkgs)
       val linux-links = os-links(`GNU/Linux, used-pkgs)
       println("ifeq ($(OS2), Darwin)")
+      defn unique-join (flags:Seqable<String>) -> String :
+        string-join(unique $ flags, " ")
       val mac-extra-flags = ["-dynamiclib"] when kind(file) == `plugin else []
-      println("  %__FLAGS = %_" % [app-filename, string-join(cat(seq(value, mac-links), mac-extra-flags), " ")])
+      println("  %__FLAGS = %_" % [app-filename, unique-join(cat(cat-all(seq(value, mac-links)), mac-extra-flags))])
       println("  %__APP = %_%_" % [app-filename, app-filename, ".dylib" when kind(file) == `plugin else ""])
       println("else")
       println("  OS := $(strip $(shell uname -o))")
       println("  ifeq ($(OS), GNU/Linux)")
       val linux-extra-flags = ["-shared"] when kind(file) == `plugin else []
-      println("    %__FLAGS = %_" % [app-filename, string-join(cat(seq(value, linux-links), linux-extra-flags), " ")])
+      println("    %__FLAGS = %_" % [app-filename, unique-join(cat(cat-all(seq(value, linux-links)), linux-extra-flags))])
       println("    %__APP = %_%_" % [app-filename, app-filename, ".so" when kind(file) == `plugin else ""])
       println("  endif")
       println("endif")

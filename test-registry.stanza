@@ -1,0 +1,10 @@
+defpackage test-registry :
+  import core
+  import collections
+  import registry
+
+defn main () :
+  val reg = read-registry-input(command-line-arguments()[1])
+  println(reg)
+
+main()

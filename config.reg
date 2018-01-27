@@ -19,23 +19,25 @@ defregistry stanza-utils :
   file "time.stanza" :
     package time :
       dependency "${GEN}/time.o"
-      link * "${GEN}/time.o"
+      link * ["${GEN}/time.o"]
   file "socket.c"
   file "socket.stanza" :
     package socket :
       dependency "${GEN}/socket.o"
-      link * "${GEN}/socket.o"
+      link * ["${GEN}/socket.o"]
   file "process.c"
   file "process.stanza" :
     package process :
       dependency "${GEN}/process.o"
-      link * "${GEN}/process.o"
+      link * ["${GEN}/process.o"]
   file "file-system.c"
   file "file-system.stanza" :
     package file-system :
       dependency "${GEN}/file-system.o"
-      link * "${GEN}/file-system.o"
+      link * ["${GEN}/file-system.o"]
   file "gen-repl.stanza" app
   file "utils.stanza"
   file "dlopen.stanza"
   file "plugin.stanza"
+  file "registry.stanza"
+  file "test-registry.stanza" app
