@@ -1,0 +1,140 @@
+defpackage stz/gendoc :
+   import core
+   import collections
+   import reader
+   import macro-utils
+   import stz/input
+   import stz/compiler
+   import stz/core-macros
+   import stz/params
+   import stz/utils
+   import stz/algorithms
+   import stz/renamer
+   import stz/resolver
+   import stz/type
+   import stz/type-to-kform
+   import stz/kform
+   import stz/kform-to-tgt
+   import stz/pl-ir
+   import stz/il-ir
+   import stz/tl-ir
+   import stz/kl-ir
+   import stz/asm-ir
+   import stz/tgt-ir
+   import stz/tgt-utils
+   import stz/namemap
+   import stz/backend
+   import stz/codegen
+   import stz/asm-emitter
+   import stz/pkg
+   import stz/fuse
+   import stz/compiler
+   import stz/ast-lang
+   import stz/reader-lang
+   import stz/check-lang
+   import stz/renamer-lang
+   import stz/resolver-lang
+   import stz/serializer-lang
+   import stz/ast-printer-lang
+   import registry
+
+defn macroexpand (forms:List) -> List :
+  val es = parse-syntax[core / #exps!](forms)
+  cons(`$begin, es)
+
+defn filename-public-definitions (filenames:Seqable<String>) -> HashTable<String,List<IExp>> :
+  defn public-definitions (e:IExp) :
+    to-list $ generate<IExp> :
+      let loop (e:IExp = e) :
+        defn* loop-public (e:IExp) :
+          match(e) :
+            (e:IBegin) :
+              do(loop-public, exps(e))
+            (e:IDefn|IDef|IDefChild|IDefType|IDefVar|IDefmulti|IDefmethod) :
+              yield(e)
+            (e) :
+              false
+        match(e) :
+          (e:IBegin) :
+            do(loop, exps(e))
+          (e:IPublic) :
+            loop-public(exp(e))
+          (e) :
+            false
+  defn public-definitions (filename:String) :
+    throw(InvalidExtensionError(filename)) when not suffix?(filename,".stanza")
+    public-definitions(read-prog(macroexpand(read-file(filename))))
+  to-hashtable<String, List<IExp>> $ for filename in filenames seq :
+    filename => public-definitions(filename)
+
+defn pretty-targs (targs:List<IExp>) :
+  "" when empty?(targs) else ("<%,>" % [pretties(targs)])
+
+defn pretty (e:IExp) :
+  match(e) :
+    (e:IOf) : "%_%_" % [pretty(class(e)), pretty-targs(args(e))]
+    (e:IAnd) : "%_&%_" % [pretty(a(e)), pretty(b(e))]
+    (e:IOr) : "%_|%_" % [pretty(a(e)), pretty(b(e))]
+    (e:IArrow) : "%_ -> %_" % [pretties(a1(e)), pretty(a2(e))]
+    (e:IGradual) : "?"
+    (e:IVoid) : "void"
+    (e:INone) : "none"
+    (e:ITuple) : "[%,]" % [pretties(exps(e))]
+    (e:IVar) : name(e)
+    (e:ICap) : "?%_" % [pretty(name(e))]
+    (e) : e
+
+defn pretties (e:List<IExp>) :
+  map(pretty, e)
+
+defn pretty-arg-type (a:IExp, t:IExp) :
+  "%_:%_" % [a, pretty(t)]
+
+defn pretty-return-type (t:IExp) :
+  "" when t is INone else (" -> %_" % [pretty(t)])
+
+defn pretty-parent (t:IExp) :
+  "" when t is INone else (" <: %_" % [pretty(t)])
+
+defn pretty-type (t:IExp) :
+  "" when t is INone else (" : %_" % [pretty(t)])
+
+defn pretty-args (targs:List<IExp>, args:List<IExp>, a1:List<IExp>, a2:IExp) :
+  "%_ (%,)%_" % [pretty-targs(targs), map(pretty-arg-type, args, a1), pretty-return-type(a2)]
+
+defn pretty-args (targs:List<IExp>, a1:List<IExp>, a2:IExp) :
+  "%_ (%,)%_" % [pretty-targs(targs), pretties(a1), pretty-return-type(a2)]
+
+defn print-definition (e:IExp) :
+  match(e) :
+    (e:IDefType) :   println("deftype %_%_%_" % [class(e) pretty-targs(args(e)) pretty-parent(parent(e))])
+    (e:IDef) :       println("val %_%_" % [name(e) pretty-type(type(e))])
+    (e:IDefVar) :    println("var %_%_" % [name(e) pretty-type(type(e))])
+    (e:IDefn) :      println("defn %_%_" % [name(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
+    (e:IDefmulti) :  println("defmulti %_%_" % [name(e) pretty-args(targs(e), a1(e) a2(e))])
+    (e:IDefmethod) : println("defmethod %_%_" % [multi(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
+    (e) : false
+
+public defn gen-doc (all-files:Seqable<File>, legal-filenames:HashSet<String>) :
+  val files0 = to-tuple $ for file in all-files filter :
+    suffix?(name(file), ".stanza") and legal-filenames[name(file)]
+  val filenames = to-list $ seq(name, filter({ kind(_) != `gen}, files0))
+  val filename-definitions = filename-public-definitions(filenames)
+
+  for entry in filename-definitions do :
+    val [filename, definitions] = [key(entry), value(entry)]
+    println(";;; FILENAME %_" % [filename])
+    for definition in definitions do :
+      print-definition(definition)
+
+defn InvalidExtensionError (filename:String) :
+  new Exception :
+    defmethod print (o:OutputStream, this) :
+      print(o, "File %_ does not have a valid Stanza file extension." % [filename])
+
+defn main () :
+  val filename = command-line-arguments()[1]
+  val input = to-tuple $ registry-files(filename)
+  gen-doc(input, to-hashset<String> $ ["./stanza-geom/geom.stanza"])
+
+main()
