@@ -50,13 +50,15 @@ defn filename-public-definitions (filenames:Seqable<String>) -> HashTable<String
           match(e) :
             (e:IBegin) :
               do(loop-public, exps(e))
-            (e:IDefn|IDef|IDefChild|IDefType|IDefVar|IDefmulti|IDefmethod) :
+            (e:IDefn|IDef|IDefChild|IDefType|IDefVar|IDefmulti|IDefmethod|ILSDefn|ILSDefType|ILSDefmethod|IPackage) :
               yield(e)
             (e) :
               false
         match(e) :
           (e:IBegin) :
             do(loop, exps(e))
+          (e:IPackage) :
+            yield(e)
           (e:IPublic) :
             loop-public(exp(e))
           (e) :
@@ -82,6 +84,8 @@ defn pretty (e:IExp) :
     (e:ITuple) : "[%,]" % [pretties(exps(e))]
     (e:IVar) : name(e)
     (e:ICap) : "?%_" % [pretty(name(e))]
+    (e:ILSOfT) : "%_%_" % [pretty(class(e)), pretty-targs(args(e))]
+    (e:ILSRefT) : "ref<%_>" % [pretty(type(e))]
     (e) : e
 
 defn pretties (e:List<IExp>) :
@@ -107,25 +111,77 @@ defn pretty-args (targs:List<IExp>, a1:List<IExp>, a2:IExp) :
 
 defn print-definition (e:IExp) :
   match(e) :
-    (e:IDefType) :   println("deftype %_%_%_" % [class(e) pretty-targs(args(e)) pretty-parent(parent(e))])
-    (e:IDef) :       println("val %_%_" % [name(e) pretty-type(type(e))])
-    (e:IDefVar) :    println("var %_%_" % [name(e) pretty-type(type(e))])
-    (e:IDefn) :      println("defn %_%_" % [name(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
-    (e:IDefmulti) :  println("defmulti %_%_" % [name(e) pretty-args(targs(e), a1(e) a2(e))])
-    (e:IDefmethod) : println("defmethod %_%_" % [multi(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
+    (e:ILSDefType) :   println("lostanza deftype %_%_%_" % [name(e) pretty-targs(args(e)) pretty-parent(parent(e))])
+    (e:ILSDefn) :      println("lostanza defn %_%_" % [name(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
+    (e:ILSDefmethod) : println("lostanza defmethod %_%_" % [multi(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
+    (e:IDefType) :     println("deftype %_%_%_" % [class(e) pretty-targs(args(e)) pretty-parent(parent(e))])
+    (e:IDef) :         println("val %_%_" % [name(e) pretty-type(type(e))])
+    (e:IDefVar) :      println("var %_%_" % [name(e) pretty-type(type(e))])
+    (e:IDefn) :        println("defn %_%_" % [name(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
+    (e:IDefmulti) :    println("defmulti %_%_" % [name(e) pretty-args(targs(e), a1(e) a2(e))])
+    (e:IDefmethod) :   println("defmethod %_%_" % [multi(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
+    (e:IPackage) :     println("defpackage %_" % [name(e)])
     (e) : false
 
-public defn gen-doc (all-files:Seqable<File>, legal-filenames:HashSet<String>) :
+defn breakup<?T> (break?:T -> True|False, s:Seqable<?T>) -> Seqable<Tuple<T>> :
+  generate<Tuple<T>> :
+    val ss = to-seq(s)
+    val v = Vector<T>()
+    let loop () :
+      if empty?(ss) :
+        yield(to-tuple(v)) when length(v) > 0
+      else :
+        val e = next(ss)
+        if break?(e) :
+          yield(to-tuple(v)) when length(v) > 0
+          clear(v)
+        add(v, e)
+        loop()
+
+defn match-string (s:String, pat:String) :
+  let loop (si:Int = 0) :
+    if si >= length(s) :
+      si >= length(pat) or pat[si] == '*'
+    else if si >= length(pat) :
+      false
+    else if pat[si] == '*' :
+      true
+    else if s[si] == pat[si] :
+      loop(si + 1)
+    else :
+      false
+
+defn deep-subexps (e:IExp) -> Seqable<IExp> :
+  generate<IExp> :
+    let loop (c:IExp = e) :
+      yield(c)
+      do(loop, c)
+    
+defn match-string (e:IExp, pat:String) :
+  label<True|False> return :
+    for se in deep-subexps(e) do :
+      match(se) :
+        (v:IVar) : return(true) when match-string(to-string $ name(v), pat)
+        (se) : false
+
+public defn gen-doc (all-files:Seqable<File>, legal-filenames:HashSet<String>, illegal-names:Tuple<String>) :
   val files0 = to-tuple $ for file in all-files filter :
     suffix?(name(file), ".stanza") and legal-filenames[name(file)]
   val filenames = to-list $ seq(name, filter({ kind(_) != `gen}, files0))
   val filename-definitions = filename-public-definitions(filenames)
 
   for entry in filename-definitions do :
-    val [filename, definitions] = [key(entry), value(entry)]
-    println(";;; FILENAME %_" % [filename])
-    for definition in definitions do :
-      print-definition(definition)
+    val [filename, all-definitions] = [key(entry), value(entry)]
+    ;; println(";;; FILENAME %_" % [filename])
+    defn legal-definition? (e:IExp) : not any?(match-string{e, _}, illegal-names)    
+    val definitions = filter(legal-definition?, all-definitions)
+    val groups = breakup({ _ is IDefType|ILSDefType|IPackage}, definitions)
+    for group in groups do :
+      println("```")
+      for definition in group do :
+        print-definition(definition)
+      println("```")
+    println("")
 
 defn InvalidExtensionError (filename:String) :
   new Exception :
@@ -135,6 +191,17 @@ defn InvalidExtensionError (filename:String) :
 defn main () :
   val filename = command-line-arguments()[1]
   val input = to-tuple $ registry-files(filename)
-  gen-doc(input, to-hashset<String> $ ["./stanza-geom/geom.stanza"])
+  val files = to-hashset<String> $ ["./stanza-geom/geom.stanza" "./stanza-libfive/libfive.stanza"]
+  val exclude-names = 
+    ["Transformation" "ArcBall" "MOV-AMOUNT" "MAG-SCALE"  "MOV-SCALE"
+     "V2d" "V3d" "Box1d" "Box2d" "Box3d"
+     "space-*" "attach" "align-*" "Half" "stack-*" "Glue*" "glue-*" "resize*" "spacer*"
+     "add-min-*" "add-max-*" "add-points"
+     "AnyGlue" "AssemblyGlue" "ShapeGlue", "glue" "AnyShapeState"
+     "Vf" "Vi" "Vb" "Pixels" "ensure-index-in-bounds"
+     "AnyTree" "Tree" "FloField*" "FloField" "BoundedTree" "TreeAssembly" "LibFiveMesh" "Vec3Field" "Vec2Field"
+     "jit*" "smash" "divisions" "min-lit" "max-lit" "opcode" "bumps" "set-mesh" "round-box"
+     "get-vert-value" "get-vert-index" "tri-count" "vert-count"]
+  gen-doc(input, files, exclude-names)
 
 main()
