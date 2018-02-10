@@ -191,7 +191,7 @@ defn InvalidExtensionError (filename:String) :
 defn main () :
   val filename = command-line-arguments()[1]
   val input = to-tuple $ registry-files(filename)
-  val files = to-hashset<String> $ ["./stanza-geom/geom.stanza" "./stanza-libfive/libfive.stanza"]
+  val files = to-hashset<String> $ ["./stanza-geom/geom.stanza" "./stanza-geom/clipper.stanza" "./stanza-libfive/libfive.stanza"]
   val exclude-names = 
     ["Transformation" "ArcBall" "MOV-AMOUNT" "MAG-SCALE"  "MOV-SCALE"
      "V2d" "V3d" "Box1d" "Box2d" "Box3d"
