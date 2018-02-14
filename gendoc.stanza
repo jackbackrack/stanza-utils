@@ -42,6 +42,37 @@ defn macroexpand (forms:List) -> List :
   val es = parse-syntax[core / #exps!](forms)
   cons(`$begin, es)
 
+defn match-string (s:String, pat:String) :
+  let loop (si:Int = 0) :
+    if si >= length(s) :
+      si >= length(pat) or pat[si] == '*'
+    else if si >= length(pat) :
+      false
+    else if pat[si] == '*' :
+      true
+    else if s[si] == pat[si] :
+      loop(si + 1)
+    else :
+      false
+
+defn deep-subexps (e:IExp) -> Seqable<IExp> :
+  generate<IExp> :
+    let loop (c:IExp = e) :
+      yield(c)
+      do(loop, c)
+    
+defn match-string (e:IExp, pat:String) :
+  label<True|False> return :
+    for se in deep-subexps(e) do :
+      match(se) :
+        (v:IVar) : return(true) when match-string(to-string $ name(v), pat)
+        (se) : false
+
+defn doc-val? (e:IExp) -> True|False :
+  match(e) :
+    (e:IDef) : match-string(to-string(name!(name(e))), "@doc-*")
+    (e) : false
+
 defn filename-public-definitions (filenames:Seqable<String>) -> HashTable<String,List<IExp>> :
   defn public-definitions (e:IExp) :
     to-list $ generate<IExp> :
@@ -59,6 +90,8 @@ defn filename-public-definitions (filenames:Seqable<String>) -> HashTable<String
             do(loop, exps(e))
           (e:IPackage) :
             yield(e)
+          (e:IDef) :
+            yield(e) when doc-val?(e)
           (e:IPublic) :
             loop-public(exp(e))
           (e) :
@@ -115,7 +148,11 @@ defn print-definition (e:IExp) :
     (e:ILSDefn) :      println("lostanza defn %_%_" % [name(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
     (e:ILSDefmethod) : println("lostanza defmethod %_%_" % [multi(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
     (e:IDefType) :     println("deftype %_%_%_" % [class(e) pretty-targs(args(e)) pretty-parent(parent(e))])
-    (e:IDef) :         println("val %_%_" % [name(e) pretty-type(type(e))])
+    (e:IDef) :
+      if doc-val?(e) :
+        println("%_" % [value(value(e) as ILiteral)])
+      else :
+        println("val %_%_" % [name(e) pretty-type(type(e))])
     (e:IDefVar) :      println("var %_%_" % [name(e) pretty-type(type(e))])
     (e:IDefn) :        println("defn %_%_" % [name(e) pretty-args(targs(e), args(e), a1(e) a2(e))])
     (e:IDefmulti) :    println("defmulti %_%_" % [name(e) pretty-args(targs(e), a1(e) a2(e))])
@@ -138,49 +175,47 @@ defn breakup<?T> (break?:T -> True|False, s:Seqable<?T>) -> Seqable<Tuple<T>> :
         add(v, e)
         loop()
 
-defn match-string (s:String, pat:String) :
-  let loop (si:Int = 0) :
-    if si >= length(s) :
-      si >= length(pat) or pat[si] == '*'
-    else if si >= length(pat) :
-      false
-    else if pat[si] == '*' :
-      true
-    else if s[si] == pat[si] :
-      loop(si + 1)
-    else :
-      false
-
-defn deep-subexps (e:IExp) -> Seqable<IExp> :
-  generate<IExp> :
-    let loop (c:IExp = e) :
-      yield(c)
-      do(loop, c)
-    
-defn match-string (e:IExp, pat:String) :
-  label<True|False> return :
-    for se in deep-subexps(e) do :
-      match(se) :
-        (v:IVar) : return(true) when match-string(to-string $ name(v), pat)
-        (se) : false
-
 public defn gen-doc (all-files:Seqable<File>, legal-filenames:HashSet<String>, illegal-names:Tuple<String>) :
   val files0 = to-tuple $ for file in all-files filter :
     suffix?(name(file), ".stanza") and legal-filenames[name(file)]
   val filenames = to-list $ seq(name, filter({ kind(_) != `gen}, files0))
   val filename-definitions = filename-public-definitions(filenames)
 
+  defn move-package-doc (defs:List<IExp>) -> Seqable<IExp> :
+    generate<IExp> :
+      let loop (prev:IExp = head(defs), next:List<IExp> = tail(defs)) :
+        if empty?(next) :
+          yield(prev)
+        else :
+          val elt = head(next)
+          if prev is IPackage and doc-val?(elt) :
+            yield(elt)
+            yield(prev)
+            val nxt = tail(next)
+            loop(head(nxt), tail(nxt))
+          else :
+            yield(prev)
+            loop(elt, tail(next))
+          
   for entry in filename-definitions do :
     val [filename, all-definitions] = [key(entry), value(entry)]
     ;; println(";;; FILENAME %_" % [filename])
     defn legal-definition? (e:IExp) : not any?(match-string{e, _}, illegal-names)    
-    val definitions = filter(legal-definition?, all-definitions)
-    val groups = breakup({ _ is IDefType|ILSDefType|IPackage}, definitions)
+    val definitions0 = filter(legal-definition?, all-definitions)
+    val definitions = move-package-doc(to-list $ definitions0)
+    val groups = breakup(fn (d) : d is IDefType|ILSDefType|IPackage, definitions)
+    var code? = false
     for group in groups do :
-      println("```")
-      for definition in group do :
-        print-definition(definition)
-      println("```")
+      for def in group do :
+        val to-code? = not doc-val?(def)
+        if to-code? == true and code? == false :
+          println("```") 
+        else if to-code? == false and code? == true :
+          println("```") 
+        code? = to-code?
+        print-definition(def)
+      println("```") when code?
+      code? = false
     println("")
 
 defn InvalidExtensionError (filename:String) :
@@ -191,16 +226,16 @@ defn InvalidExtensionError (filename:String) :
 defn main () :
   val filename = command-line-arguments()[1]
   val input = to-tuple $ registry-files(filename)
-  val files = to-hashset<String> $ ["./stanza-geom/geom.stanza" "./stanza-geom/clipper.stanza" "./stanza-libfive/libfive.stanza"]
+  val files = to-hashset<String> $ ["./stanza-geom/geom.stanza" "./stanza-geom/clipper.stanza" "./stanza-gfx/font.stanza" "./stanza-libfive/libfive.stanza"]
   val exclude-names = 
     ["Transformation" "ArcBall" "MOV-AMOUNT" "MAG-SCALE"  "MOV-SCALE"
      "V2d" "V3d" "Box1d" "Box2d" "Box3d"
-     "space-*" "attach" "align-*" "Half" "stack-*" "Glue*" "glue-*" "resize*" "spacer*"
-     "add-min-*" "add-max-*" "add-points"
-     "AnyGlue" "AssemblyGlue" "ShapeGlue", "glue" "AnyShapeState"
+     "space-*" "Half" "Glue*" "glue-*" "spacer*"
+     "AnyGlue" "AssemblyGlue" "ShapeGlue"  "AnyShapeState"
+     "display-list" "set-display-list"
      "Vf" "Vi" "Vb" "Pixels" "ensure-index-in-bounds"
      "AnyTree" "Tree" "FloField*" "FloField" "BoundedTree" "TreeAssembly" "LibFiveMesh" "Vec3Field" "Vec2Field"
-     "jit*" "smash" "divisions" "min-lit" "max-lit" "opcode" "bumps" "set-mesh" "round-box"
+     "jit*" "smash" "min-lit" "max-lit" "opcode" "bumps" "set-mesh" "round-box"
      "get-vert-value" "get-vert-index" "tri-count" "vert-count"]
   gen-doc(input, files, exclude-names)
 
