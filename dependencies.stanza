@@ -205,11 +205,11 @@ public defn gen-dependencies (all-files:Seqable<File>) :
     println("\t${STZ} %_/%_.stanza ${%__STZ_FLAGS}" % [*build-dir* obj *build-dir*])
     println("")
 
-  val mac-files = to-tuple $ for file in files filter : kind(file) == `mac
-  for file in mac-files do :
-    println("%_/%_-stanza: %_" % [*build-dir* obj-filename(name(file)) name(file)])
-    println("\tstanza %_ ${STZ_COMPILER_MAIN} -flags OPTIMIZE -o %_/%_-stanza" % [name(file) *build-dir* obj-filename(name(file))])
-    println("")
+  ;; val mac-files = to-tuple $ for file in files filter : kind(file) == `mac
+  ;; for file in mac-files do :
+  ;;   println("%_/%_-stanza: %_" % [*build-dir* obj-filename(name(file)) name(file)])
+  ;;   println("\tstanza %_ ${STZ_COMPILER_MAIN} -flags OPTIMIZE -s %_/%_.s -o %_/%_-stanza" % [name(file) *build-dir* obj-filename(name(file)) *build-dir* obj-filename(name(file))])
+  ;;   println("")
 
   defn used-packages (pkg-roots:Seqable<Package>) :
     val used = HashTable<Symbol, Package>()
@@ -231,11 +231,11 @@ public defn gen-dependencies (all-files:Seqable<File>) :
             yield(link)
 
   for file in files do :
-    if contains?([`app, `plugin], kind(file)) :
+    if contains?([`app, `plugin `mac], kind(file)) :
       val [compiler, compiler?] = compiler-of(file)
       val used-pkgs = to-tuple $ used-packages(packages(file))
       val direct-pkgs = to-tuple $ direct-packages(packages(file))
-      val app-filename = obj-filename(name(file))
+      val app-filename = string-join([obj-filename(name(file)) ("-stanza" when kind(file) == `mac else "")])
       val mac-links = os-links(`Darwin, used-pkgs)
       val linux-links = os-links(`GNU/Linux, used-pkgs)
       println("ifeq ($(OS2), Darwin)")
@@ -256,7 +256,9 @@ public defn gen-dependencies (all-files:Seqable<File>) :
       val imports = join(unique(seq({ pkg-name(group-name[_]) }, filter(user?, direct-pkgs))), " ")
       println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), imports, compiler when compiler? else ""])
       ;; println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
-      println("\t%_ %_ -o %_/${%__APP} -s %_/%_.s ${%__STZ_FLAGS} -ccflags \"${%__FLAGS}\"" % [compiler, name(file) *build-dir* app-filename *build-dir* app-filename *build-dir* app-filename])
+      println("\t%_ %_ -o %_/${%__APP} -s %_/%_.s ${%__STZ_FLAGS} -ccflags \"${%__FLAGS}\"" %
+        [compiler, string-join([name(file) (" ${STZ_COMPILER_MAIN}" when kind(file) == `mac else "")])
+         *build-dir* app-filename *build-dir* app-filename *build-dir* app-filename])
       println("")
 
 defn InvalidExtensionError (filename:String) :
