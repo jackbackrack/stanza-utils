@@ -73,7 +73,23 @@ defn non-suffix (filename:String) :
 defn obj-filename (filename:String) :
   non-suffix(base-name(filename))
 
-public defn gen-dependencies (all-files:Seqable<File>) :
+defn update-cpp-link (link:Link) :
+  switch(os(link)) :
+  `Darwin :    [Link(os(link), to-tuple $ cat(value(link), ["-lc++"]))]
+  `GNU/Linux : [Link(os(link), to-tuple $ cat(value(link), ["-lstdc++"]))]
+  `* :         cat(update-cpp-link(Link(`Darwin, value(link))), update-cpp-link(Link(`GNU/Linux, value(link))))
+
+defn update-cpp-package (pkg:Package) :
+  Package(name(pkg), dependencies(pkg), to-list $ cat-all(seq(update-cpp-link, links(pkg))))
+
+defn update-cpp-file (file:File) :
+  if suffix?(name(file), ".cpp") :
+    File(name(file), kind(file), flags(file), syntax(file), map(update-cpp-package, packages(file)))
+  else :
+    file
+
+public defn gen-dependencies (i-all-files:Seqable<File>) :
+  val all-files = to-list $ seq(update-cpp-file, i-all-files)
   val files0 = to-tuple $ for file in all-files filter : suffix?(name(file), ".stanza")
   val filenames = to-list $ seq(name, filter({ kind(_) != `gen}, files0))
   val filename-pkgs = filename-packages(filenames)
