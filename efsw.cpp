@@ -35,7 +35,7 @@ class UpdateListener : public efsw::FileWatchListener {
       WatcherEvent event(filename);
       queue->enqueue(event);
     }
-    std::cout << "DIR (" << dir + ") FILE (" + ( oldFilename.empty() ? "" : "from file " + oldFilename + " to " ) + filename + ") has event " << getActionName( action ) << std::endl;
+    // std::cout << "DIR (" << dir + ") FILE (" + ( oldFilename.empty() ? "" : "from file " + oldFilename + " to " ) + filename + ") has event " << getActionName( action ) << std::endl;
   }
 };
 
