@@ -1,0 +1,33 @@
+defpackage efsw :
+  import core
+
+lostanza deftype Watcher :
+  value : ptr<?>
+
+extern new_watcher: () -> ptr<?>
+extern watcher_add_dirname: (ptr<?>, ptr<byte>) -> int
+extern watcher_add_filename: (ptr<?>, ptr<byte>) -> int
+extern watcher_is_empty: (ptr<?>) -> int
+extern watcher_next: (ptr<?>) -> int
+
+public lostanza defn Watcher () -> ref<Watcher> :
+  return new Watcher{call-c new_watcher()}
+
+public lostanza defn add-dirname (w:ref<Watcher>, dirname:ref<String>) -> ref<Int> :
+  return new Int{call-c watcher_add_dirname(w.value, addr!(dirname.chars))}
+
+public lostanza defn add-filename (w:ref<Watcher>, filename:ref<String>) -> ref<Int> :
+  return new Int{call-c watcher_add_filename(w.value, addr!(filename.chars))}
+
+public lostanza defn empty? (w:ref<Watcher>) -> ref<True|False> :
+  val res = call-c watcher_is_empty(w.value)
+  if res == 0 :
+    return false
+  else :
+    return true
+
+public lostanza defn next (w:ref<Watcher>) -> ref<Int> :
+  return new Int{call-c watcher_next(w.value)}
+
+
+
