@@ -290,24 +290,27 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
   ;; println-all(["EVAL -> " res])
   res
 
-public defn do-eval (pkg:Package, s:String) -> ? :
+public defn do-eval (pkg:Package, s:String, parse:? -> ?) -> ? :
   val forms = read-all(s)
   val es = unwrap-all(parse(forms))
   ;; println-all(["DO-EVAL " es])
   eval-begin(List(frame(pkg)), es)
 
-public defn safe-eval (env:Symbol, expr:String) -> ? :
+public defn safe-eval (env:Symbol, expr:String, parse:? -> ?) -> ? :
   try :
     ;; println-all(["SAFE-EVAL " env " / " expr])
     if key?(*packages*, env) :
-      do-eval(*packages*[env], expr)
+      do-eval(*packages*[env], expr, parse)
     else :
       false
   catch (e:Exception) :
     false
 
-public defn eval (pkg:Package, s:String) -> ? :
-  val res = do-eval(pkg, s)
+public defn safe-eval (env:Symbol, expr:String) -> ? :
+  safe-eval(env, expr, parse)
+
+public defn eval (pkg:Package, s:String, parse:? -> ?) -> ? :
+  val res = do-eval(pkg, s, parse)
   add-frame-binding(frame(pkg), `*result*, res)
   for listener in listeners(pkg) do : value(listener)()
   ;; println-all(["FORMS: " forms])
@@ -315,6 +318,9 @@ public defn eval (pkg:Package, s:String) -> ? :
   ;; println-all(["EVAL: "  res])
   res
     
+public defn eval (pkg:Package, s:String) -> ? :
+  eval(pkg, s, parse)
+
 ;; defn main () :
 ;;   val s = command-line-arguments()[1]
 ;;   eval(s, false)
