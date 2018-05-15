@@ -73,6 +73,7 @@ defn non-suffix (filename:String) :
 defn obj-filename (filename:String) :
   non-suffix(base-name(filename))
 
+;; TODO: CURRENTLY DOESN'T HELP BECAUSE AREN'T PART OF MODELED DEPENDENCIES
 defn update-cpp-link (link:Link) :
   switch(os(link)) :
   `Darwin :    [Link(os(link), to-tuple $ cat(value(link), ["-lc++"]))]
@@ -84,7 +85,10 @@ defn update-cpp-package (pkg:Package) :
 
 defn update-cpp-file (file:File) :
   if suffix?(name(file), ".cpp") :
-    File(name(file), kind(file), flags(file), syntax(file), map(update-cpp-package, packages(file)))
+    val default-package = Package(to-symbol(name(file)), List(), List(Link(`*, [])))
+    val pkgs = to-list $ [default-package] when empty?(packages(file)) else packages(file)
+    File(name(file), kind(file), flags(file), syntax(file), map(update-cpp-package, pkgs))
+    ;; println("# UPDATING CPP %_" % [res])
   else :
     file
 
@@ -252,8 +256,10 @@ public defn gen-dependencies (i-all-files:Seqable<File>) :
       val used-pkgs = to-tuple $ used-packages(packages(file))
       val direct-pkgs = to-tuple $ direct-packages(packages(file))
       val app-filename = string-join([obj-filename(name(file)) ("-stanza" when kind(file) == `mac else "")])
-      val mac-links = os-links(`Darwin, used-pkgs)
-      val linux-links = os-links(`GNU/Linux, used-pkgs)
+      ;; println("# USED-PKGS %_" % [used-pkgs])
+      ;; ADD DEFAULT C++ LINKING -- TODO: IMPROVE TO ONLY ADD IF NEEDED
+      val mac-links   = cat(os-links(`Darwin, used-pkgs),    [ Link(`Darwin,    ["-lc++"]) ])
+      val linux-links = cat(os-links(`GNU/Linux, used-pkgs), [ Link(`GNU/Linux, ["-lstdc++"]) ])
       println("ifeq ($(OS2), Darwin)")
       defn unique-join (flags:Seqable<String>) -> String :
         string-join(unique $ flags, " ")
