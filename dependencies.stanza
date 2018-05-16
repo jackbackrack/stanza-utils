@@ -175,7 +175,7 @@ public defn gen-dependencies (i-all-files:Seqable<File>) :
   defn print-rule (team:List<Symbol>) :
     val e = head(team)
     val file = file-table[package-filename[e]]
-    if contains?([`std, `app, `plugin], kind(file)) :
+    if contains?([`std, `mac, `app, `plugin], kind(file)) :
       print("%s: %s" % [seq(pkg-name, team) seq({package-filename[_]}, team)])
       for guy in team do :
         for import in unique(seq({ group-name[_] }, graph[guy])) do :
