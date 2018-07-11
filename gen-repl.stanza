@@ -94,14 +94,17 @@ defn visit (s:OutputStream, build-name:String, pkg-name:Symbol, directs:HashSet<
     ;; println-all(["CONSIDERING " decl])
     match(id(decl)) :
       (vid:ValId|VarId) :
-        if direct? and visibility(id(decl)) is Public :
+        if direct? and visibility(id(decl)) is Public and not visited?[name(vid)] :
+          add(visited?, name(vid))
           println(s, "  eval-add-frame-binding(frame, `%~, %~)" % [name(vid), name(vid)])
       (vid:LSValId) :
-        if direct? and type(vid) is RefT and visibility(id(decl)) is Public :
+        if direct? and type(vid) is RefT and visibility(id(decl)) is Public and not visited?[name(vid)]  :
+          add(visited?, name(vid))
           println(s, "  eval-add-frame-binding(frame, `%~, %~)" % [name(vid), name(vid)])
       (tid:TypeId|LSTypeId) :
         type-names[n(decl)] = name(tid)
-        if visibility(id(decl)) is Public and direct? :
+        if visibility(id(decl)) is Public and direct? and not visited?[name(tid)]  :
+          add(visited?, name(tid))
           print-type(s, name(tid), name(tid))
       (id) : false
   for decl in declarations(ids(pkg)) do :
