@@ -46,7 +46,7 @@ defn include-type? (name:Symbol) :
 
 defn print-type (s:OutputStream, var-name, type-name) :
   if include-type?(to-symbol $ var-name) :
-    println(s, "  eval-add-frame-binding(frame, `%~, eval-Type(`%~ fn (x) : x is %~, fn (x): x as %~))" %
+    println(s, "  eval-add-frame-type-binding(frame, `%~, eval-Type(`%~ fn (x) : x is %~, fn (x): x as %~))" %
                  [var-name, var-name, type-name, type-name])
 
 defn visit (s:OutputStream, build-name:String, pkg-name:Symbol, directs:HashSet<Symbol>,

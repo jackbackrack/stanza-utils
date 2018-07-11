@@ -17,6 +17,12 @@ defregistry stanza-utils :
   file "compiler/stz-primitives.stanza" stz
   file "eval.stanza"
   file "time.c"
+  file "efsw.cpp" :
+    flags "-std=c++11"
+  file "efsw.stanza" :
+    package efsw :
+      dependency "${GEN}/efsw.o"
+      link * ["${GEN}/efsw.o" "-lefsw"]
   file "time.stanza" :
     package time :
       dependency "${GEN}/time.o"

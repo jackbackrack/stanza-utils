@@ -33,10 +33,11 @@ defstruct Entry :
 
 public defstruct Frame :
   entries : HashTable<Symbol, Entry>
+  type-entries : HashTable<Symbol, Entry>
   parents : Tuple<Frame>
 
 public defn Frame (parents:Tuple<Frame>) :
-  Frame(HashTable<Symbol, Entry>(), parents)
+  Frame(HashTable<Symbol, Entry>(), HashTable<Symbol, Entry>(), parents)
 
 public defn Frame () :
   Frame([])
@@ -53,6 +54,12 @@ public defn Package (name:Symbol, parents:Tuple<Package>) :
   val res = Package(name, parents, Frame(to-tuple $ seq(frame, parents)), HashTable<Symbol, (() -> False)>())
   *packages*[name] = res
   res
+
+public defn add-frame-type-binding* (frame:Frame, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
+  type-entries(frame)[name] = Entry(getter, setter)
+
+public defn add-frame-type-binding (frame:Frame, name:Symbol, value) -> False :
+  add-frame-type-binding*(frame, name, { value }, { false })
 
 public defn add-frame-binding* (frame:Frame, name:Symbol, getter: () -> ?, setter: ? -> False) -> False :
   entries(frame)[name] = Entry(getter, setter)
@@ -72,35 +79,38 @@ defstruct UndefinedBindingException <: Exception :
 defmethod print (o:OutputStream, e:UndefinedBindingException) :
   print(o, "Undefined binding %_" % [name(e)])
 
-defn lookup-entry (env:List<Frame>, name:Symbol) -> Entry :
-  label<Entry> return :
-    defn lookup-frame (frame:Frame) :
-      if key?(entries(frame), name) :
-        return(entries(frame)[name])
-      for parent in parents(frame) do :
-        lookup-frame(parent)
-    for frame in env do :
-      lookup-frame(frame)        
-    throw(UndefinedBindingException(name))
-
 defn canonicalize (name:Symbol) -> Symbol :
   val s = to-string $ name
   match(last-index-of-char(s, '/')) :
     (i:Int) : to-symbol $ s[(i + 1) to false]
     (f) : name
 
-defn lookup (env:List<Frame>, name:Symbol) -> ? :
+defn lookup-entry (env:List<Frame>, type?:True|False, name:Symbol) -> Entry :
+  label<Entry> return :
+    defn lookup-frame (frame:Frame) :
+      val elts = type-entries(frame) when type? else entries(frame)
+      if key?(elts, name) :
+        ;; println("FOUND %_ IN %_ -> %_" % [name to-tuple(keys(elts)) getter(elts[name])()])
+        return(elts[name])
+      for parent in parents(frame) do :
+        lookup-frame(parent)
+    for frame in env do :
+      lookup-frame(frame)        
+    throw(UndefinedBindingException(name))
+
+defn lookup (env:List<Frame>, type?:True|False, name:Symbol) -> ? :
   val cname = canonicalize(name)
-  getter(lookup-entry(env, cname))()
+  getter(lookup-entry(env, type?, cname))()
 
 public defn lookup (env:Symbol, name:Symbol) -> ? :
   if key?(*packages*, env) :
-    lookup(List(frame(*packages*[env])), name)
+    lookup(List(frame(*packages*[env])), false, name)
   else :
     false ;; TODO: UNDEFINED BINDING
 
 public defn set-binding (env:List<Frame>, name:Symbol, value) :
-  setter(lookup-entry(env, name))(value)
+  ;; println("SETTING %_ TO %_" % [name value])
+  setter(lookup-entry(env, false, name))(value)
 
 public defn add-frame (env:List<Frame>) -> List<Frame> :
   cons(Frame(), env)
@@ -115,7 +125,7 @@ public defn eval-begin (env:List<Frame>, l:List) -> ? :
   defn* loop (elts:List) :
     val res = eval(env, head(elts))
     if empty?(tail(elts)) : res else : loop(tail(elts))
-  loop(l)
+  false when empty?(l) else loop(l)
 
 defstruct NoBranchFoundException <: Exception : ()
 
@@ -193,6 +203,9 @@ defmethod print (o:OutputStream, e:UnknownMultiException) :
   print(o, "Unknown Multi Found")
 
 public defn eval (env:List<Frame>, sexpr) -> ? :
+  eval(env, false, sexpr)
+
+public defn eval (env:List<Frame>, type?:True|False, sexpr) -> ? :
   ;; println-all(["EVAL: " sexpr])
   val res = 
     ;; indented({
@@ -204,7 +217,7 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
       (t:True) : t
       (f:False) : f
       (s:String) : s
-      (s:Symbol) : lookup(env, s)
+      (s:Symbol) : lookup(env, type?, s)
       (l:List) :
         val op = head(l)
         switch {op == _} :
@@ -214,14 +227,14 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
             val args = map(eval{env, _}, tail(tail(l)))
             apply(fun, args)
           `$of :
-            eval(env, l[1])
+            eval(env, type?, l[1])
           `$match :
             val exprs    = map(eval{env, _}, l[1])
             val branches = tail(tail(l))
             label<?> return :
               for branch in branches do :
                 val bindings = branch[1]
-                val types    = map(eval{env, _}, branch[2])
+                val types    = map(eval{env, true, _}, branch[2])
                 val body     = branch[3]
                 if all?(fn (e, t): isa?(t)(e), exprs, types) :
                   val nenv = add-bindings(env, bindings, exprs)
@@ -243,18 +256,18 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
               for (name in tail(names), init in inits) do:
                 add-binding(env, name, init)
           `$or :
-            val t1 = eval(env, l[1])
-            val t2 = eval(env, l[2])
+            val t1 = eval(env, true, l[1])
+            val t2 = eval(env, true, l[2])
             Type(`anon, fn (x) : isa?(t1)(x) or isa?(t2)(x), fn (x) : x)
           `$and :
-            val t1 = eval(env, l[1])
-            val t2 = eval(env, l[2])
+            val t1 = eval(env, true, l[1])
+            val t2 = eval(env, true, l[2])
             Type(`anon, fn (x) : isa?(t1)(x) and isa?(t2)(x), fn (x) : x)
           `$quote :
             l[1]
           `$as? :
             val e = eval(env, l[1])
-            val t = eval(env, l[2])
+            val t = eval(env, true, l[2])
             as!(t)(e)
           `$let :
             val body = l[1]
@@ -290,24 +303,27 @@ public defn eval (env:List<Frame>, sexpr) -> ? :
   ;; println-all(["EVAL -> " res])
   res
 
-public defn do-eval (pkg:Package, s:String) -> ? :
+public defn do-eval (pkg:Package, s:String, parse:? -> ?) -> ? :
   val forms = read-all(s)
   val es = unwrap-all(parse(forms))
   ;; println-all(["DO-EVAL " es])
   eval-begin(List(frame(pkg)), es)
 
-public defn safe-eval (env:Symbol, expr:String) -> ? :
+public defn safe-eval (env:Symbol, expr:String, parse:? -> ?) -> ? :
   try :
     ;; println-all(["SAFE-EVAL " env " / " expr])
     if key?(*packages*, env) :
-      do-eval(*packages*[env], expr)
+      do-eval(*packages*[env], expr, parse)
     else :
       false
   catch (e:Exception) :
     false
 
-public defn eval (pkg:Package, s:String) -> ? :
-  val res = do-eval(pkg, s)
+public defn safe-eval (env:Symbol, expr:String) -> ? :
+  safe-eval(env, expr, parse)
+
+public defn eval (pkg:Package, s:String, parse:? -> ?) -> ? :
+  val res = do-eval(pkg, s, parse)
   add-frame-binding(frame(pkg), `*result*, res)
   for listener in listeners(pkg) do : value(listener)()
   ;; println-all(["FORMS: " forms])
@@ -315,6 +331,9 @@ public defn eval (pkg:Package, s:String) -> ? :
   ;; println-all(["EVAL: "  res])
   res
     
+public defn eval (pkg:Package, s:String) -> ? :
+  eval(pkg, s, parse)
+
 ;; defn main () :
 ;;   val s = command-line-arguments()[1]
 ;;   eval(s, false)

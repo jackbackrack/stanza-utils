@@ -230,7 +230,7 @@ defn main () :
   val exclude-names = 
     ["Transformation" "ArcBall" "MOV-AMOUNT" "MAG-SCALE"  "MOV-SCALE"
      "V2d" "V3d" "Box1d" "Box2d" "Box3d"
-     "space-*" "Half" "Glue*" "glue-*" "spacer*"
+     "space-*" "Half" "glue-*" "spacer*"
      "AnyGlue" "AssemblyGlue" "ShapeGlue"  "AnyShapeState"
      "display-list" "set-display-list"
      "Vf" "Vi" "Vb" "Pixels" "ensure-index-in-bounds"
