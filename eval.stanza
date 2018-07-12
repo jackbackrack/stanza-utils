@@ -248,10 +248,6 @@ public defn eval (env:List<Frame>, type?:True|False, sexpr) -> ? :
               { eval(env, body) }
             else :
               throw(UnknownMultiException())
-          `$public :
-            eval(env, false, l[1])
-          `$protected :
-            eval(env, false, l[1])
           `$def :
             val inits = eval(env, l[3])
             match(l[1]):
@@ -301,6 +297,31 @@ public defn eval (env:List<Frame>, type?:True|False, sexpr) -> ? :
             function*(`anon, env, l[1] as List<Symbol>, l[4])
           `$begin :
             eval-begin(env, tail(l))
+
+          ;;; DUMMY IMPLEMENTATIONS
+
+          `$package :
+            false
+          `$import :
+            false
+          `$prefix :
+            false
+          `$loadpackage :
+            false
+          `$public :
+            eval(env, false, l[1])
+          `$protected :
+            eval(env, false, l[1])
+          `$annotate :
+            eval(env, false, l[2])
+          `$cast :
+            eval(env, false, l[1])
+          `$upcast :
+            eval(env, false, l[1])
+          `$defchild :
+            false
+          `$prim :
+            false
           else :
             false
   ;;   })
