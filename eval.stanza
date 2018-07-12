@@ -248,6 +248,10 @@ public defn eval (env:List<Frame>, type?:True|False, sexpr) -> ? :
               { eval(env, body) }
             else :
               throw(UnknownMultiException())
+          `$public :
+            eval(env, false, l[1])
+          `$protected :
+            eval(env, false, l[1])
           `$def :
             val inits = eval(env, l[3])
             match(l[1]):
