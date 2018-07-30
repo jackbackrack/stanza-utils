@@ -309,13 +309,15 @@ public defn do-eval (pkg:Package, s:String, parse:? -> ?) -> ? :
   ;; println-all(["DO-EVAL " es])
   eval-begin(List(frame(pkg)), es)
 
+public defn do-eval (env:Symbol, expr:String, parse:? -> ?) -> ? :
+  if key?(*packages*, env) :
+    do-eval(*packages*[env], expr, parse)
+  else :
+    false
+
 public defn safe-eval (env:Symbol, expr:String, parse:? -> ?) -> ? :
   try :
-    ;; println-all(["SAFE-EVAL " env " / " expr])
-    if key?(*packages*, env) :
-      do-eval(*packages*[env], expr, parse)
-    else :
-      false
+    do-eval(env, expr, parse)
   catch (e:Exception) :
     false
 
