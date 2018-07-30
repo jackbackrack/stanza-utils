@@ -50,7 +50,7 @@ defn print-type (s:OutputStream, var-name, type-name) :
                  [var-name, var-name, type-name, type-name])
 
 defn visit (s:OutputStream, build-name:String, pkg-name:Symbol, directs:HashSet<Symbol>,
-            visited?:HashSet<Symbol>, visible?:HashSet<Symbol>,
+            type-visited?:HashSet<Symbol>, visited?:HashSet<Symbol>, visible?:HashSet<Symbol>,
             fns:HashTable<Symbol, List<FnEntry>>) -> False :
   val type-names = IntTable<Symbol>()
   val pkg = load-package(pkg-pathname(build-name, pkg-name))
@@ -94,14 +94,17 @@ defn visit (s:OutputStream, build-name:String, pkg-name:Symbol, directs:HashSet<
     ;; println-all(["CONSIDERING " decl])
     match(id(decl)) :
       (vid:ValId|VarId) :
-        if direct? and visibility(id(decl)) is Public :
+        if direct? and visibility(id(decl)) is Public and not visited?[name(vid)] :
+          add(visited?, name(vid))
           println(s, "  eval-add-frame-binding(frame, `%~, %~)" % [name(vid), name(vid)])
       (vid:LSValId) :
-        if direct? and type(vid) is RefT and visibility(id(decl)) is Public :
+        if direct? and type(vid) is RefT and visibility(id(decl)) is Public and not visited?[name(vid)]  :
+          add(visited?, name(vid))
           println(s, "  eval-add-frame-binding(frame, `%~, %~)" % [name(vid), name(vid)])
       (tid:TypeId|LSTypeId) :
         type-names[n(decl)] = name(tid)
-        if visibility(id(decl)) is Public and direct? :
+        if visibility(id(decl)) is Public and direct? and not type-visited?[name(tid)]  :
+          add(type-visited?, name(tid))
           print-type(s, name(tid), name(tid))
       (id) : false
   for decl in declarations(ids(pkg)) do :
@@ -133,9 +136,10 @@ defn dump (build-name:String, pkg-name:String) :
   println-all(s, ["  val env = List(frame)"])
   val fns = HashTable<Symbol, List<FnEntry>>()
   val visited? = HashSet<Symbol>()
+  val type-visited? = HashSet<Symbol>()
   val visible? = HashSet<Symbol>()
   for direct in directs do :
-    visit(s, build-name, to-symbol $ direct, directs, visited?, visible?, fns)
+    visit(s, build-name, to-symbol $ direct, directs, type-visited?, visited?, visible?, fns)
   defn extra-ids () :
     ["`core/KeyValue" => "core/KeyValue"
      "`core/Range" => "core/Range"
