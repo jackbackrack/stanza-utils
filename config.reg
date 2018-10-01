@@ -5,6 +5,7 @@ defregistry stanza-utils :
   file "core/parser.stanza" stz
   file "core/macro-utils.stanza" stz
   file "compiler/stz-config.stanza" stz
+  file "compiler/stz-arg-parser.stanza" stz
   file "compiler/stz-algorithms.stanza" stz
   file "compiler/stz-core-macros.stanza" stz
   file "compiler/stz-params.stanza" stz

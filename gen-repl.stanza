@@ -22,16 +22,36 @@ defn pkg-pathname (build-name:String, pkg-name:Symbol) :
   string-join([path "/" filename ".pkg"])
 
 defn visit-imports (s:OutputStream, build-name:String, pkg-name:Symbol) -> HashSet<Symbol> :
-  ;; println-all(["IMPORT PKG-NAME " pkg-name " FILENAME " pkg-pathname(pkg-name)])
+  println-all(["IMPORT PKG-NAME " pkg-name])
   val pkg = load-package(pkg-pathname(build-name, pkg-name))
   val directs = HashSet<Symbol>()
+  val symbols = HashSet<Symbol>()
   defn include-import? (imp:Symbol) :
     not (imp == `clib or (pkg-name == "core" and contains?([`collections `core], imp)) or (pkg-name == "collections" and contains?([`collections], imp)))
   for ipkg in imports(ids(pkg)) do :
     val imp = package(ipkg)
     add(directs, imp)
     if include-import?(imp) :
-      println-all(s, ["  import " imp])
+      val pkg-imported = load-package(pkg-pathname(build-name, imp))
+      val excludes = HashSet<Symbol>()
+      val my-symbols = HashSet<Symbol>()
+      defn check-import (name:Symbol) :
+        add(excludes, name) when symbols[name]
+        add(my-symbols, name)
+      for imp in declarations(ids(pkg-imported)) do :
+        match(id(imp)) :
+          (id:TypeId|LSTypeId|ValId|LSValId|VarId|LSVarId) :
+            check-import(name(id)) when visibility(id) is Public
+          (id) : false
+      print(s, "  import %_" % [imp])
+      for sym in my-symbols do :
+        add(symbols, sym)
+      if length(excludes) > 0 :
+        println(s, " with:")
+        for i in excludes do :
+          println(s, "    prefix(%_) => @@" % [i])
+      else :
+        println(s, "")
   directs
 
 defstruct FnEntry :

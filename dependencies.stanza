@@ -6,6 +6,7 @@ defpackage stz/dependencies :
    import stz/input
    import stz/compiler
    import stz/core-macros
+   import stz/arg-parser
    import stz/params
    import stz/utils
    import stz/algorithms
