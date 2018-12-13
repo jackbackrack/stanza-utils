@@ -1,0 +1,54 @@
+defpackage union-find :
+  import core
+  import collections
+
+public defstruct UFSet<T> <: Equalable&Hashable :
+  parent: False|UFSet<T> with: (setter => set-parent, default => false)
+  value: T
+  id : Int
+  size: Int with: ( setter => set-size )
+with:
+  constructor => #UFSet
+
+defmethod equal? (a:UFSet, b:UFSet) : id(a) == id(b)
+defmethod hash (a:UFSet) : hash(id(a))
+
+val ids = to-seq(0 to false)
+
+public defn UFSet<?T> (value:?T) :
+  #UFSet<T>(value, next(ids), 1)
+
+public defn root? (s:UFSet) :
+  parent(s) is False
+
+public defn root<?T> (s:UFSet<?T>) :
+  match(parent(s)) :
+    (p:False) :
+      s
+    (p:UFSet<T>) :
+      val r = let @root (s:UFSet<T> = p) :
+        match(parent(s)) :
+          (p:False) : s
+          (p:UFSet<T>) : @root(p)
+      let update (s:UFSet<T> = p) :
+        match(parent(s)) :
+          (p:False) : false
+          (p:UFSet<T>) :
+            set-parent(s, p)
+            update(p)
+      r
+
+public defn merge! (a:UFSet, b:UFSet) :
+  if root(a) != root(b) :
+    val [p, c] = [b, a] when size(a) < size(b) else [a, b]
+    set-parent(root(p), root(c))
+    set-size(p, size(p) + size(c))
+
+public defn collect-members<?T> (sets:Seqable<UFSet<?T>>) -> HashTable<UFSet<T>,List<UFSet<T>>> :
+  val members = HashTable<UFSet<T>,List<UFSet<T>>>(List())
+  for e in sets do :
+    val r = e when root?(e) else root(e) 
+    println("ID %_ ROOT? %_ ROOT %_" % [id(e) root?(e) id(root(e))])
+    members[r] = cons(e, members[r])
+  members
+
