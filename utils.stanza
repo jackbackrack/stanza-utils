@@ -60,6 +60,11 @@ public defn rndf (lo:Float, hi:Float) -> Float :
   val d = hi - lo
   lo + (r * d)
 
+;; TODO: PERHAPS GENERALIZE TO SEQ OF REDUCTIONS
+public defn cumsum (nums:Seqable<Float>) -> Seq<Float> :
+  var tot:Float = 0.0f
+  for n in nums seq : (tot = tot + n, tot)
+
 public defn my-ensure-index-in-bounds (xs:Lengthable, i:Int) :
   if i < 0 or i >= length(xs) :
     fatal("Index (%_) out of bounds." % [i])

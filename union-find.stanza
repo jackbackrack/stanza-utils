@@ -48,7 +48,7 @@ public defn collect-members<?T> (sets:Seqable<UFSet<?T>>) -> HashTable<UFSet<T>,
   val members = HashTable<UFSet<T>,List<UFSet<T>>>(List())
   for e in sets do :
     val r = e when root?(e) else root(e) 
-    println("ID %_ ROOT? %_ ROOT %_" % [id(e) root?(e) id(root(e))])
+    ;; println("ID %_ ROOT? %_ ROOT %_" % [id(e) root?(e) id(root(e))])
     members[r] = cons(e, members[r])
   members
 
