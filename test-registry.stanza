@@ -1,3 +1,5 @@
+;; See license.txt for details about licensing.
+
 defpackage test-registry :
   import core
   import collections
