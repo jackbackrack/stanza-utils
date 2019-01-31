@@ -3,6 +3,8 @@
 defpackage registry :
   import core
   import reader
+  import stz/params
+  import stz/config
 
 public defstruct Registry :
   name : Symbol
@@ -86,9 +88,10 @@ public defn registry-files (filename:String) :
   val reg = read-registry-input(registry-pathname)
   defn config-name (pathname:String) :
     string-join([registry-dirname pathname])
+  read-config-file()
   defn reloc-pathname (file:File) :
     val dir = switch(kind(file)) :
-      `stz : "../stanza/"
+      `stz : string-join([STANZA-INSTALL-DIR, "/"])
       `gen : "build/"
       else : registry-dirname
     File(string-join([dir name(file)]), kind(file), flags(file), syntax(file), packages(file))
