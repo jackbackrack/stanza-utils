@@ -1,3 +1,5 @@
+;; See license.txt for details about licensing.
+
 defpackage gen-repl :
   import core
   import collections

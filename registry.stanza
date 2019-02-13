@@ -1,3 +1,5 @@
+;; See license.txt for details about licensing.
+
 defpackage registry :
   import core
   import reader
@@ -87,6 +89,7 @@ public defn registry-files (filename:String) :
   val reg = read-registry-input(registry-pathname)
   defn config-name (pathname:String) :
     string-join([registry-dirname pathname])
+  read-config-file()
   defn reloc-pathname (file:File) :
     val dir = switch(kind(file)) :
       `stz : string-join([STANZA-INSTALL-DIR, "/"])

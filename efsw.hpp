@@ -1,3 +1,5 @@
+// See license.txt for details about licensing.
+
 class Watcher;
 extern "C" {
 Watcher* new_watcher (void);

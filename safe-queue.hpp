@@ -1,3 +1,5 @@
+// See license.txt for details about licensing.
+
 #ifndef SAFE_QUEUE
 #define SAFE_QUEUE
 

@@ -1,3 +1,5 @@
+// See license.txt for details about licensing.
+
 #include <efsw/efsw.hpp>
 #include <efsw/System.hpp>
 #include <efsw/FileSystem.hpp>

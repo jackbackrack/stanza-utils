@@ -1,3 +1,5 @@
+// See license.txt for details about licensing.
+
 #include <stdio.h>
 #include <time.h>
 
