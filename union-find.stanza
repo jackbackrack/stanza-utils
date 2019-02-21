@@ -17,8 +17,11 @@ defmethod hash (a:UFSet) : hash(id(a))
 
 val ids = to-seq(0 to false)
 
+public defn UFSet<?T> (value:?T, id:Int) :
+  #UFSet<T>(value, id, 1)
+
 public defn UFSet<?T> (value:?T) :
-  #UFSet<T>(value, next(ids), 1)
+  UFSet(value, next(ids))
 
 public defn root? (s:UFSet) :
   parent(s) is False
