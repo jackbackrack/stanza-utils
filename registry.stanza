@@ -82,6 +82,7 @@ public defn base-name (pathname:String) -> String :
   split-pathname(pathname)[1]
 
 public defn registry-files (filename:String) :
+  read-config-file()
   val registry-pathname = string-join([filename "/config.reg"])
   val registry-dirname = dir-name(registry-pathname)
   ;; println("reading %_" % [registry-pathname])
