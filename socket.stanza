@@ -39,7 +39,7 @@ defmethod get-char (s:Socket) -> Char|False :
 defmethod fill (xs:CharArray, r:Range, s:Socket) :
   ;; #if-not-defined(OPTIMIZE) :
   ;;    ensure-index-range(xs, r)
-  val [b,e] = range-bound(xs, r)
+  val [b,e] = core/range-bound(xs, r)
   recv-into(s, xs, b)
 
 public lostanza defn send (s:ref<Socket>, m:ref<String>) -> ref<False> :

@@ -51,6 +51,8 @@ public defn sign (x:Float) -> Float :
 public defn rndi (lo:Int, hi:Int) -> Int :
   (rand() % (hi - lo + 1)) + lo
 
+public defn rnd (lo:Int, hi:Int): rndi(lo, hi)
+
 public defn rndf () -> Float :
   val n = 1000000
   to-float(rand() % n) / to-float(n)
@@ -59,6 +61,19 @@ public defn rndf (lo:Float, hi:Float) -> Float :
   val r = rndf()
   val d = hi - lo
   lo + (r * d)
+
+public defn rnd (lo:Float, hi:Float): rndf(lo, hi)
+
+public defn rndd () -> Double :
+  val n = 1000000
+  to-double(rand() % n) / to-double(n)
+
+public defn rndd (lo:Double, hi:Double) -> Double :
+  val r = rndd()
+  val d = hi - lo
+  lo + (r * d)
+
+public defn rnd (lo:Double, hi:Double): rndd(lo, hi)
 
 ;; TODO: PERHAPS GENERALIZE TO SEQ OF REDUCTIONS
 public defn cumsum (nums:Seqable<Float>) -> Seq<Float> :
@@ -324,3 +339,13 @@ public defn chunk<?T> (asrc:Seqable<?T>, amask:Seqable<True|False>) -> Seq<Seq<T
             yield(next(src))
             if empty?(mask) or next(mask) == false : loop()
       yield(gen)
+
+extern usleep: (int) -> int
+
+public lostanza defn usleep (t:ref<Int>) -> ref<False> :
+  call-c usleep(t.value)
+  return false
+
+public defn sleep (t:Float) -> False :
+  usleep(to-int $ (t * 1.0e6f))
+

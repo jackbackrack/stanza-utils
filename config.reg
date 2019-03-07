@@ -46,7 +46,7 @@ defregistry stanza-utils :
   file "gen-repl.stanza" app
   file "utils.stanza"
   file "union-find.stanza"
-  file "dlopen.stanza"
-  file "plugin.stanza"
+  ;; file "dlopen.stanza"
+  ;; file "plugin.stanza"
   file "registry.stanza"
   file "test-registry.stanza" app

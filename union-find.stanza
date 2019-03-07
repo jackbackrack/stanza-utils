@@ -57,3 +57,12 @@ public defn collect-members<?T> (sets:Seqable<UFSet<?T>>) -> HashTable<UFSet<T>,
     members[r] = cons(e, members[r])
   members
 
+public defn one-set? (sets:Seqable<UFSet>) -> True|False :
+  label<True|False> return :
+    var num:Int = 0
+    for set in sets do :
+      num = num + 1
+      return(false) when num > 1
+    true
+
+
