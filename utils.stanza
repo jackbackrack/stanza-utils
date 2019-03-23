@@ -23,6 +23,18 @@ public defn to-stanza (any:Token) -> ? :
 
 ;;; GENERAL
 
+public defn last<?T> (s:IndexedCollection<?T>&Lengthable) -> T :
+  s[length(s) - 1]
+
+public defn unique<?T,?S> (key:T -> ?S&Equalable&Hashable, xs:Seqable<?T>) -> Seq<T> :
+  val visited? = HashSet<S>()
+  generate<T> :
+    for e in xs do :
+      val k = key(e)
+      if not visited?[k] :
+        add(visited?, k)
+        yield(e)
+
 public defn f+ (a:Float, b:Float) : a + b ;; NEEDED FOR REDUCE BECAUSE OF BUG IN TYPE INFERENCE
 public defn i+ (a:Int, b:Int) : a + b     ;; NEEDED FOR REDUCE BECAUSE OF BUG IN TYPE INFERENCE
 
