@@ -26,6 +26,9 @@ public defn to-stanza (any:Token) -> ? :
 public defn last<?T> (s:IndexedCollection<?T>&Lengthable) -> T :
   s[length(s) - 1]
 
+public defn last<?T> (s:Tuple<?T>) -> T :
+  s[length(s) - 1]
+
 public defn unique<?T,?S> (key:T -> ?S&Equalable&Hashable, xs:Seqable<?T>) -> Seq<T> :
   val visited? = HashSet<S>()
   generate<T> :
