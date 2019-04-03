@@ -50,3 +50,4 @@ defregistry stanza-utils :
   ;; file "plugin.stanza"
   file "registry.stanza"
   file "test-registry.stanza" app
+  file "heap.stanza"
