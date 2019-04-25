@@ -23,6 +23,34 @@ public defn to-stanza (any:Token) -> ? :
 
 ;;; GENERAL
 
+public defn scan<?T,?S> (f: (T, S) -> ?T, x0: ?T, xs:Seqable<?S>) -> Seq<T> :
+   var accum = x0
+   for x in xs seq :
+      accum = f(accum, x)
+      accum
+
+public defn rnd-indices (len:Int) -> Array<Int> :
+  val indices = Array<Int>(len)
+  for i in 0 to len do : indices[i] = i
+  for i in 0 to len do :
+    val j = rnd(0, len - 1)
+    val k = rnd(0, len - 1)
+    val t = indices[k]
+    indices[k] = indices[j]
+    indices[j] = t
+  indices
+
+public defn rnd-order<?T> (elts:IndexedCollection<?T>&Lengthable) -> Seq<T> :
+  for i in rnd-indices(length(elts)) seq : elts[i]
+
+public defn successive-pairs<?T> (ielts:Seqable<?T>) -> Seq<[T, T]> :
+  val elts = to-seq(ielts)
+  var prev:T = next(elts)
+  for e in elts seq :
+    val res = [prev, e]
+    prev = e
+    res
+
 public defn last<?T> (s:IndexedCollection<?T>&Lengthable) -> T :
   s[length(s) - 1]
 
