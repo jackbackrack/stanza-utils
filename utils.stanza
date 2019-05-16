@@ -118,6 +118,12 @@ public defn rndd (lo:Double, hi:Double) -> Double :
 
 public defn rnd (lo:Double, hi:Double): rndd(lo, hi)
 
+public defn rnd<?T> (elts:IndexedCollection<?T>&Lengthable) -> T :
+  elts[rndi(0, length(elts) - 1)]
+
+public defn rnd<?T> (elts:Tuple<?T>) -> T :
+  elts[rndi(0, length(elts) - 1)]
+
 ;; TODO: PERHAPS GENERALIZE TO SEQ OF REDUCTIONS
 public defn cumsum (nums:Seqable<Float>) -> Seq<Float> :
   var tot:Float = 0.0f

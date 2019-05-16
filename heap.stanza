@@ -12,6 +12,9 @@ defmethod print (o:OutputStream, h:BinaryHeap) :
 public defn length (h:BinaryHeap) -> Int :
   length(elts(h)) - 1
 
+public defn BinaryHeap<T> () :
+  BinaryHeap<T&Comparable>(Vector<T&Comparable>())
+
 public defn BinaryHeap<?T> (zero:?T&Comparable) :
   val h = BinaryHeap<T&Comparable>(Vector<T&Comparable>())
   add(elts(h), zero)
@@ -29,12 +32,13 @@ public defn add-all<?T> (h:BinaryHeap<?T&Comparable>, alist:Tuple<?T&Comparable>
 defn perc-up<?T> (h:BinaryHeap<?T&Comparable>, ii:Int) :
   val elts = elts(h)
   let loop (i:Int = ii) :
-    if (i / 2) > 0 :
-      if elts[i] < elts[i / 2] :
-        val tmp = elts[i / 2]
-        elts[i / 2] = elts[i]
+    val i2 = i >> 1
+    if i2 > 0 :
+      if elts[i] < elts[i2] :
+        val tmp = elts[i2]
+        elts[i2] = elts[i]
         elts[i] = tmp
-      loop(i / 2)
+      loop(i2)
 
 public defn add<?T> (h:BinaryHeap<?T&Comparable>, k:?T&Comparable) :
   add(elts(h), k)
@@ -52,13 +56,14 @@ defn perc-down<?T> (h:BinaryHeap<?T&Comparable>, ii:Int) :
       loop(mc)
 
 defn min-child<?T> (h:BinaryHeap<?T&Comparable>, i:Int) :
-  if (i * 2 + 1) > length(h) :
-    i * 2
+  val i2 = i << 1
+  if (i2 + 1) > length(h) :
+    i2
   else :
-    if elts(h)[i * 2] < elts(h)[i * 2 + 1] :
-      i * 2
+    if elts(h)[i2] < elts(h)[i2 + 1] :
+      i2
     else :
-      i * 2 + 1
+      i2 + 1
 
 public defn pop<?T> (h:BinaryHeap<?T&Comparable>) -> T :
   val res = elts(h)[1]
