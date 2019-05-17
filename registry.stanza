@@ -93,7 +93,7 @@ public defn registry-files (filename:String) :
   defn reloc-pathname (file:File) :
     val dir = switch(kind(file)) :
       `stz : string-join([STANZA-INSTALL-DIR, "/"])
-      `gen : "build/"
+      `gen : "boot/"
       else : registry-dirname
     File(string-join([dir name(file)]), kind(file), flags(file), syntax(file), packages(file))
   unique(reduce(cat, seq(reloc-pathname, files(reg)), seq({ registry-files(config-name(pathname(_))) }, includes(reg))))

@@ -1,0 +1,261 @@
+;; See license.txt for details about licensing.
+
+defpackage gen-makefile :
+   import core
+   import collections
+   import registry
+   import read-dependencies
+
+var *build-dir* = "debug"
+var *build-opt* = ""
+
+defn pkg-name (name:Symbol) -> String :
+  string-join([*build-dir* "/" replace(to-string $ name, "/", "$$") ".pkg"])
+
+defn non-suffix (filename:String) :
+  val index = last-index-of-char(filename, '.')
+  filename[0 to (index as Int)]
+    
+defn obj-filename (filename:String) :
+  non-suffix(base-name(filename))
+
+;; TODO: CURRENTLY DOESN'T HELP BECAUSE AREN'T PART OF MODELED DEPENDENCIES
+defn update-cpp-link (link:Link) :
+  switch(os(link)) :
+  `Darwin :    [Link(os(link), to-tuple $ cat(value(link), ["-lc++"]))]
+  `GNU/Linux : [Link(os(link), to-tuple $ cat(value(link), ["-lstdc++"]))]
+  `* :         cat(update-cpp-link(Link(`Darwin, value(link))), update-cpp-link(Link(`GNU/Linux, value(link))))
+
+defn update-cpp-package (pkg:Package) :
+  Package(name(pkg), dependencies(pkg), to-list $ cat-all(seq(update-cpp-link, links(pkg))))
+
+defn update-cpp-file (file:File) :
+  if suffix?(name(file), ".cpp") :
+    val default-package = Package(to-symbol(name(file)), List(), List(Link(`*, [])))
+    val pkgs = to-list $ [default-package] when empty?(packages(file)) else packages(file)
+    File(name(file), kind(file), flags(file), syntax(file), map(update-cpp-package, pkgs))
+    ;; println("# UPDATING CPP %_" % [res])
+  else :
+    file
+
+public defn gen-dependencies (i-all-files:Seqable<File>, stanza:String) -> Dependencies :
+  val all-files = to-list $ seq(update-cpp-file, i-all-files)
+  val files0 = to-tuple $ for file in all-files filter : suffix?(name(file), ".stanza")
+  ;; val filenames = to-list $ seq(name, filter({ kind(_) != `gen}, files0))
+  val filenames = to-list $ seq(name, files0)
+
+  for file in files0 do :
+    if kind(file) == `gen :
+      val stream = FileOutputStream(name(file))
+      println(stream, "defpackage %_:" % [name(head(packages(file)))])
+      println(stream, "  import core")
+      close(stream)
+
+  val args = to-tuple $ cat-all([[stanza "analyze-dependencies"], filenames, ["-o", "boot/jrb-dependencies.txt"]])
+  ;; call-system(stanza, args)
+  read-dependencies("boot/jrb-dependencies.txt")
+
+public defn gen-makefile (i-all-files:Seqable<File>, deps:Dependencies) :
+  val all-files = to-list $ seq(update-cpp-file, i-all-files)
+  val files0 = to-tuple $ for file in all-files filter : suffix?(name(file), ".stanza")
+  ;; val filenames = to-list $ seq(name, filter({ kind(_) != `gen}, files0))
+  val filenames = to-list $ seq(name, files0)
+
+  val graph = HashTable<Symbol, List<Symbol>>()
+  val package-filename = to-hashtable<Symbol, String> $ source-files(deps)
+  for group in group-dependencies(deps) do :
+    for pkg in key(group) do :
+      graph[pkg] = value(group)
+
+  val source-pkg-names = HashTable<String,List<Symbol>>(List())
+  for elt in source-files(deps) do :
+    source-pkg-names[value(elt)] = cons(key(elt), source-pkg-names[value(elt)])
+
+  val files = to-tuple $ generate<File> :
+    for file in files0 do :
+      val pkgs = generate<Package> :
+        val pkg-table = to-hashtable<Symbol, Package> $ seq(fn (p) : name(p) => p, packages(file))
+        for pkg-name in source-pkg-names[name(file)] do :
+          yield(get?(pkg-table, pkg-name, Package(pkg-name, List(), List())))
+      yield(File(name(file), kind(file), flags(file), syntax(file), to-list $ pkgs))
+    ;; for file in files0 do :
+    ;;   if kind(file) == `gen :
+    ;;     val pkg = Package(to-symbol $ obj-filename(name(file)), List(), List())
+    ;;     yield(File(name(file), kind(file), flags(file), syntax(file), List(pkg)))
+
+  ;; println-all(["FILES " files])
+
+  val file-table = to-hashtable<String, File> $ seq(fn (f) : name(f) => f, files)
+
+  defn user? (name:Symbol) :
+    kind(file-table[package-filename[name]]) != `stz
+
+  val pkgs = to-hashtable<Symbol, Package> $ generate<KeyValue<Symbol, Package>> :
+    for file in files do :
+      for package in packages(file) do :
+        yield(name(package) => package)
+      
+  println("%__STZ_FLAGS = -pkg %_ %_" % [*build-dir* *build-dir* *build-opt*])
+  println("")
+
+  print("%_/all:" % [*build-dir*])
+  for file in filter({ contains?([`app, `plugin], _) }, files) do :
+    print(" %_/%_" % [*build-dir* obj-filename(name(file))])
+  println("\n\tmkdir -p %_" % [*build-dir*])
+  println("")
+
+  println("%_/clean: "% [*build-dir*])
+  println("\trm -f %_/*" % [*build-dir*])
+  println("")
+
+  defn compiler-of (file:File) -> [String, True|False] :
+    match(syntax(file)) :
+      (s:Syntax) : [string-join([*build-dir* "/" value(s) "-stanza"]), true]
+      (s:False) : ["${STZ}", false]
+  
+  val group-name = HashTable<Symbol, Symbol>()
+  
+  for group in group-dependencies(deps) do :
+    for e in key(group) do :
+      group-name[e] = head(key(group))
+
+  defn print-rule (team:List<Symbol>) :
+    val e = head(team)
+    val file = file-table[package-filename[e]]
+    if contains?([`std, `mac, `app, `plugin], kind(file)) :
+      print("%s: %s" % [seq(pkg-name, team) seq({package-filename[_]}, team)])
+      for guy in team do :
+        for import in unique(seq({ group-name[_] }, graph[guy])) do :
+          if e != import : 
+            print(" %_" % [pkg-name(import)]) when user?(import)
+        ;; for dep in graph[name(pkgs[guy])] do :
+        ;;   print(" %_" % [dep])
+      val [compiler, compiler?] = compiler-of(file-table[package-filename[e]])
+      print(" %_" % [compiler]) when compiler?
+      println("")
+      val file-set = HashSet<String>()
+      for pkg-name in team do :
+        add(file-set, package-filename[pkg-name]) when user?(pkg-name)
+      val files = to-tuple $ file-set
+      println("\t%_ %_ ${%__STZ_FLAGS}" % [compiler string-join(files, " ") *build-dir*])
+      println("")
+
+  for group in group-dependencies(deps) do :
+    print-rule(key(group))
+
+  val c-files = to-tuple $ for file in all-files filter : suffix?(name(file), ".c")
+  for file in c-files do :
+    println("%_/%_.o: %_" % [*build-dir* obj-filename(name(file)) name(file)])
+    val flags = "" when flags(file) is False else flags(file)
+    println("\t${CC} %_ -c ${CFLAGS} -o %_/%_.o %_" % [flags *build-dir* obj-filename(name(file)) name(file)])
+    println("")
+
+  val cpp-files = to-tuple $ for file in all-files filter : suffix?(name(file), ".cpp")
+  for file in cpp-files do :
+    println("%_/%_.o: %_" % [*build-dir* obj-filename(name(file)) name(file)])
+    val flags = "" when flags(file) is False else flags(file)
+    println("\tc++ %_ -c ${CFLAGS} -o %_/%_.o %_" % [flags *build-dir* obj-filename(name(file)) name(file)])
+    println("")
+
+  val gen-files = to-tuple $ for file in files filter : kind(file) == `gen
+  for file in gen-files do :
+    val obj = obj-filename(name(file))
+    val base = obj[length("eval-") to false]
+    println("%_/%_.stanza: %_/gen-repl %_/eval.pkg %_" % [*build-dir* obj *build-dir* *build-dir* pkg-name(to-symbol $ base)])
+    println("\t%_/gen-repl %_ ${STANZADIR} %_" % [*build-dir* *build-dir* base])
+    println("")
+    println("%_: %_/%_.stanza" % [pkg-name(to-symbol $ obj) *build-dir* obj])
+    println("\t${STZ} %_/%_.stanza ${%__STZ_FLAGS}" % [*build-dir* obj *build-dir*])
+    println("")
+
+  defn os-links (os-name:Symbol, pkgs:Seqable<Package>) :
+    generate<Link> :
+      for pkg in pkgs do :
+        for link in links(pkg) do :
+          if os(link) == os-name or os(link) == `* :
+            yield(link)
+
+  defn used-packages (pkg-roots:Seqable<Package>) :
+    val used = HashTable<Symbol, Package>()
+    defn loop (root:Package) -> False :
+      if not key?(used, name(root)) :
+        used[name(root)] = root
+        do(fn (i): loop(pkgs[i]) when key?(pkgs, i), graph[name(root)])
+    do(loop, pkg-roots)
+    values(used)
+
+  defn direct-packages (pkgs:Seqable<Package>) :
+    unique(cat-all(seq({ graph[name(_)] }, pkgs)))
+
+  for file in files do :
+    if contains?([`app, `plugin `mac], kind(file)) :
+      val [compiler, compiler?] = compiler-of(file)
+      val used-pkgs = to-tuple $ used-packages(packages(file))
+      val direct-pkgs = to-tuple $ direct-packages(packages(file))
+      val app-filename = string-join([obj-filename(name(file)) ("-stanza" when kind(file) == `mac else "")])
+      ;; println("# USED-PKGS %_" % [used-pkgs])
+      ;; ADD DEFAULT C++ LINKING -- TODO: IMPROVE TO ONLY ADD IF NEEDED
+      val mac-links   = cat(os-links(`Darwin, used-pkgs),    [ Link(`Darwin,    ["-lc++"]) ])
+      val linux-links = cat(os-links(`GNU/Linux, used-pkgs), [ Link(`GNU/Linux, ["-lstdc++"]) ])
+      println("ifeq ($(OS2), Darwin)")
+      defn unique-join (flags:Seqable<String>) -> String :
+        string-join(unique $ flags, " ")
+      val mac-extra-flags = ["-dynamiclib"] when kind(file) == `plugin else []
+      println("  %__FLAGS = %_" % [app-filename, unique-join(cat(cat-all(seq(value, mac-links)), mac-extra-flags))])
+      println("  %__APP = %_%_" % [app-filename, app-filename, ".dylib" when kind(file) == `plugin else ""])
+      println("else")
+      println("  OS := $(strip $(shell uname -o))")
+      println("  ifeq ($(OS), GNU/Linux)")
+      val linux-extra-flags = ["-shared"] when kind(file) == `plugin else []
+      println("    %__FLAGS = %_" % [app-filename, unique-join(cat(cat-all(seq(value, linux-links)), linux-extra-flags))])
+      println("    %__APP = %_%_" % [app-filename, app-filename, ".so" when kind(file) == `plugin else ""])
+      println("  endif")
+      println("endif")
+      println("")
+      val imports = join(unique(seq({ pkg-name(group-name[_]) }, filter(user?, direct-pkgs))), " ")
+      println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), imports, compiler when compiler? else ""])
+      ;; println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
+      val flags = to-string $ ("${%__STZ_FLAGS} -ccflags \"${%__FLAGS}\"" % [*build-dir* app-filename])
+      println("\t%_ %_ -o %_/${%__APP} -s %_/%_.s %_" %
+        [compiler, string-join([("extend " when kind(file) == `mac else "") name(file)])
+         *build-dir* app-filename *build-dir* app-filename ("" when kind(file) == `mac else flags)])
+      println("")
+  false
+
+defn InvalidExtensionError (filename:String) :
+  new Exception :
+    defmethod print (o:OutputStream, this) :
+      print(o, "File %_ does not have a valid Stanza file extension." % [filename])
+
+defn main () :
+  val filename = command-line-arguments()[1]
+  val stanza = command-line-arguments()[2]
+  val input = to-tuple $ registry-files(filename)
+  ;; println("# %_" % [input])
+  ;; println(stanza-files)
+
+  println("STZ = stanza")
+  println("OS2 := $(strip $(shell uname))")
+  println("")
+  println("ifeq ($(OS2), Darwin)")
+  println("  $(info Compiling for Darwin)")
+  println("  CFLAGS = -DMACOSX=1")
+  println("  LIBS = $(COMMON_LIBS)")
+  println("else")
+  println("  $(info Compiling for non Darwin)")
+  println("  OS := $(strip $(shell uname -o))")
+  println("  ifeq ($(OS), GNU/Linux)")
+  println("    $(info Compiling for GNU/Linux)")
+  println("    CFLAGS = ")
+  println("    LIBS = $(COMMON_LIBS) -lm")
+  println("  endif")
+  println("endif")
+  println("")
+
+  val deps = gen-dependencies(input, stanza)
+  for [dir, opt] in [["release", "-optimize"] ["debug" ""]] do :
+    let-var *build-dir* = dir :
+      let-var *build-opt* = opt :
+        gen-makefile(input, deps)
+
+main()

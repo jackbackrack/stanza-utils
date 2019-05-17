@@ -1,0 +1,86 @@
+defpackage read-dependencies :
+  import core
+  import collections
+
+;============================================================
+;======================== Structure =========================
+;============================================================
+
+public defstruct Dependencies :
+  package-dependencies: Tuple<KeyValue<Symbol,List<Symbol>>>
+  group-dependencies: Tuple<KeyValue<List<Symbol>,List<Symbol>>>
+  source-files: Tuple<KeyValue<Symbol,String>>
+
+;============================================================
+;============================= API ==========================
+;============================================================
+
+public defn read-dependencies (filename:String) -> Dependencies :
+  val forms = reader/read-file(filename)
+  parse-syntax[dependencies-file / #dependencies!](forms)
+
+;============================================================
+;======================== Syntax ============================
+;============================================================
+
+defsyntax dependencies-file :
+  public defproduction dependencies! : Dependencies
+  defrule dependencies! = (package dependencies: (?pds:#package-dep! ...)
+                           package group dependencies: (?cds:#component-dep! ...)
+                           source files: (?sfs:#source-file! ...)) :
+    Dependencies(to-tuple(pds), to-tuple(cds), to-tuple(sfs))
+  fail-if dependencies! = () : DE(closest-info(), "Ill-formed dependency file.")
+
+  defproduction package-dep! : KeyValue<Symbol,List<Symbol>>
+  defrule package-dep! = (?p:#symbol! imports (?ds:#symbol! ...)) : p => ds
+  fail-if package-dep! = () : DE(closest-info(), "Ill-formed package dependency.")
+
+  defproduction component-dep! : KeyValue<List<Symbol>, List<Symbol>>
+  defrule component-dep! = ((?ps:#symbol! ...) imports (?ds:#symbol! ...))  : ps => ds
+  fail-if component-dep! = () : DE(closest-info(), "Ill-formed component dependency.")
+
+  defproduction source-file! : KeyValue<Symbol,String>
+  defrule source-file! = (?p:#symbol! loaded-from ?f:#string!) : p => f
+  fail-if source-file! = () : DE(closest-info(), "Ill-formed source file entry.")  
+
+  defproduction symbol: Symbol
+  defrule symbol = (?x) when ut(x) is Symbol : ut(x)
+  
+  defproduction string:String
+  defrule string = (?x) when ut(x) is String : ut(x)
+
+  defproduction symbol!: Symbol
+  defrule symbol! = (?x:#symbol) : x
+  fail-if symbol! = () : DE(closest-info(), "Expected a symbol here.")
+
+  defproduction string!: String
+  defrule string! = (?x:#string) : x
+  fail-if string! = () : DE(closest-info(), "Expected a string here.")
+
+  defn ut (x) : unwrap-token(x)
+
+;============================================================
+;======================== Error =============================
+;============================================================
+  
+defstruct DependenciesError <: Exception :
+  info: FileInfo|False
+  msg: String
+
+defmethod print (o:OutputStream, e:DependenciesError) :
+  val info-str = "" when info(e) is False
+            else "%_: " % [info(e)]
+  print(o, "%_%_" % [info-str, msg(e)])
+
+defn DE (info:FileInfo|False, msg) :
+  DependenciesError(info, to-string(msg))
+
+;; let :
+;;   val filename = command-line-arguments()[1]
+;;   val ds = read-dependencies(filename)
+;;   println("Package dependencies:")
+;;   do(println, package-dependencies(ds))
+;;   println("Group dependencies:")
+;;   do(println, group-dependencies(ds))
+;;   println("Source files:")
+;;   do(println, source-files(ds))

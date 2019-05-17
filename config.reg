@@ -9,13 +9,6 @@ defregistry stanza-utils :
   file "compiler/stz-algorithms.stanza" stz
   file "compiler/stz-core-macros.stanza" stz
   file "compiler/stz-params.stanza" stz
-  file "compiler/stz-ids.stanza" stz
-  file "compiler/stz-pkg.stanza" stz
-  file "compiler/stz-tl-ir.stanza" stz
-  file "compiler/stz-pl-ir.stanza" stz
-  file "compiler/stz-kl-ir.stanza" stz
-  file "compiler/stz-tgt-ir.stanza" stz
-  file "compiler/stz-primitives.stanza" stz
   file "eval.stanza"
   file "time.c"
   file "efsw.cpp" :
@@ -43,7 +36,7 @@ defregistry stanza-utils :
     package file-system :
       dependency "${GEN}/file-system.o"
       link * ["${GEN}/file-system.o"]
-  file "gen-repl.stanza" app
+  ;; file "gen-repl.stanza" app
   file "utils.stanza"
   file "union-find.stanza"
   ;; file "dlopen.stanza"
@@ -51,3 +44,5 @@ defregistry stanza-utils :
   file "registry.stanza"
   file "test-registry.stanza" app
   file "heap.stanza"
+  file "read-dependencies.stanza"
+  file "gen-makefile.stanza" app
