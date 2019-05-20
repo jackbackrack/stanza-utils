@@ -10,7 +10,8 @@ var *build-dir* = "debug"
 var *build-opt* = ""
 
 defn pkg-name (name:Symbol) -> String :
-  string-join([*build-dir* "/" replace(to-string $ name, "/", "$$") ".pkg"])
+  string-join([*build-dir* "/" replace(to-string $ name, "/", "$$")
+               (".fpkg" when *build-dir* == "release" else ".pkg")])
 
 defn non-suffix (filename:String) :
   val index = last-index-of-char(filename, '.')
