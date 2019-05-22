@@ -2,6 +2,7 @@ defpackage edits :
   import core
   import collections
 
+public var *trace-edits?*:True|False = false
 val *edit-ids* = to-seq(0 to false)
 public defn next-edit-id () : next(*edit-ids*)
 
@@ -33,9 +34,9 @@ public defstruct Edits :
   elts : Vector<Edit> with: (init => Vector<Edit>())
 
 public defn undo (edits:Edits) :
-  println("UNDOING %_ EDITS" % [length(elts(edits))])
+  println("UNDOING %_ EDITS" % [length(elts(edits))]) when *trace-edits?*
   for i in (index(edits) - 1) through mark(edits) by -1 do :
-    println("UNDOING %_ %_" % [i, elts(edits)[i]])
+    println("UNDOING %_ %_" % [i, elts(edits)[i]]) when *trace-edits?*
     undo(elts(edits)[i])
   set-index(edits, mark(edits))
   
@@ -63,7 +64,7 @@ public defn add (edits:Edits, edit:Edit) :
   pop(edits, index(edits))
   add(elts(edits), edit)
   set-index(edits, length(elts(edits)))
-  println("ADD %_ INDEX %_" % [edit, index(edits)])
+  println("ADD %_ INDEX %_" % [edit, index(edits)]) when *trace-edits?* 
 
 public defn add-edit (f:() -> Edit) :
   add(*edits* as Edits, f()) when *edits* is Edits
