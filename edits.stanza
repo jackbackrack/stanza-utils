@@ -10,9 +10,9 @@ public defmulti id (e:Edit)
 public defmulti redo (e:Edit)
 public defmulti undo (e:Edit)
 
-public defstruct SlotEdit <: Edit
+public defstruct SlotEdit <: Edit :
   name : String
-  id : Int with: (as-method => true)
+  id : Int with: (init => next-edit-id(), as-method => true)
   object : ?
   prev : ?
   next : ?
