@@ -1,0 +1,69 @@
+defpackage edits :
+  import core
+  import collections
+
+val *edit-ids* = to-seq(0 to false)
+public defn next-edit-id () : next(*edit-ids*)
+
+public deftype Edit 
+public defmulti id (e:Edit)
+public defmulti redo (e:Edit)
+public defmulti undo (e:Edit)
+
+public defstruct SlotEdit <: Edit
+  name : String
+  id : Int with: (as-method => true)
+  object : ?
+  prev : ?
+  next : ?
+  apply : (?, ?) -> False
+
+defmethod print (o:OutputStream, x:SlotEdit) :
+  print(o, "SlotEdit(%_, %_,%_, %_, %_)" % [id(x), name(x), object(x), prev(x), next(x)])
+
+defmethod undo (edit:SlotEdit) :
+  apply(edit)(object(edit), prev(edit))
+  
+defmethod redo (edit:SlotEdit) :
+  apply(edit)(object(edit), next(edit))
+  
+public defstruct Edits :
+  index : Int with: (init => 0, setter => set-index)
+  mark : Int with: (init => 0, setter => #set-mark)
+  elts : Vector<Edit> with: (init => Vector<Edit>())
+
+public defn undo (edits:Edits) :
+  println("UNDOING %_ EDITS" % [length(elts(edits))])
+  for i in (index(edits) - 1) through mark(edits) by -1 do :
+    println("UNDOING %_ %_" % [i, elts(edits)[i]])
+    undo(elts(edits)[i])
+  set-index(edits, mark(edits))
+  
+defn pop (edits:Edits, idx:Int) :
+  shorten(elts(edits), idx)
+  #set-mark(edits, min(mark(edits), length(elts(edits))))
+  
+public defn redo (edits:Edits) :
+  for i in mark(edits) to length(elts(edits)) do :
+    redo(elts(edits)[i])
+  set-index(edits, length(elts(edits)))
+  
+public defn set-mark (edits:Edits) :
+  #set-mark(edits, index(edits))
+
+public defn clear (edits:Edits) :
+  println("CLEARING")
+  clear(elts(edits))
+  #set-mark(edits, 0)
+  set-index(edits, 0)
+
+public var *edits*:False|Edits = false
+
+public defn add (edits:Edits, edit:Edit) :
+  pop(edits, index(edits))
+  add(elts(edits), edit)
+  set-index(edits, length(elts(edits)))
+  println("ADD %_ INDEX %_" % [edit, index(edits)])
+
+public defn add-edit (f:() -> Edit) :
+  add(*edits* as Edits, f()) when *edits* is Edits
