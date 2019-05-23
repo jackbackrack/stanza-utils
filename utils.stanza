@@ -23,6 +23,10 @@ public defn to-stanza (any:Token) -> ? :
 
 ;;; GENERAL
 
+public defn set-all<?T> (v:Vector<?T>, elts:Seqable<T>) :
+  clear(v)
+  add-all(v, elts)
+
 public defn scan<?T,?S> (f: (T, S) -> ?T, x0: ?T, xs:Seqable<?S>) -> Seq<T> :
    var accum = x0
    for x in xs seq :

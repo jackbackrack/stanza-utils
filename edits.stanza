@@ -56,7 +56,6 @@ public defn find-prev-target (edits:Edits, idx:Int) -> [Int, Int] :
 public defn undo (edits:Edits) :
   println("UNDOING EDITS %_" % [edits])
   val [target, mark-index] = find-prev-target(edits, index(edits))
-  println("FOUND TARGET %_ MARK-INDEX %_" % [target, mark-index])
   for i in (index(edits) - 1) through target by -1 do :
     println("UNDOING %_ %_" % [i, elts(edits)[i]]) when *trace-edits?*
     undo(elts(edits)[i])
@@ -80,7 +79,7 @@ public defn clear (edits:Edits) :
 
 defn pop (edits:Edits, idx:Int) :
   val [target, mark-index] = find-prev-target(edits, idx + 1)
-  println("POPPING %_ TO TARGET %_ MARK-INDEX %_" % [idx, target, mark-index])
+  ;; println("POPPING %_ TO TARGET %_ MARK-INDEX %_" % [idx, target, mark-index])
   shorten(marks(edits), mark-index + 1)
   shorten(elts(edits), idx)
   
@@ -92,5 +91,12 @@ public defn add (edits:Edits, edit:Edit) :
 
 public var *edits*:False|Edits = false
 
+public defn add-edit (e:Edit) :
+  add(*edits* as Edits, e) when *edits* is Edits
+
 public defn add-edit (f:() -> Edit) :
-  add(*edits* as Edits, f()) when *edits* is Edits
+  add-edit(f()) when *edits* is Edits
+
+public defn add-do-edit (e:Edit) :
+  redo(e)
+  add-edit(e)
