@@ -6,27 +6,17 @@ public var *trace-edits?*:True|False = false
 val *edit-ids* = to-seq(0 to false)
 public defn next-edit-id () : next(*edit-ids*)
 
-public deftype Edit 
-public defmulti id (e:Edit)
-public defmulti redo (e:Edit)
-public defmulti undo (e:Edit)
-
-public defstruct SlotEdit <: Edit :
+public defstruct Edit :
   name : String
-  id : Int with: (init => next-edit-id(), as-method => true)
-  object : ?
-  prev : ?
-  next : ?
-  apply : (?, ?) -> False
+  id : Int with: (init => next-edit-id())
+  edit-redo : () -> ?
+  edit-undo : () -> ?
 
-defmethod print (o:OutputStream, x:SlotEdit) :
-  print(o, "SlotEdit(%_, %_,%_, %_, %_)" % [id(x), name(x), object(x), prev(x), next(x)])
+public defn redo (e:Edit) : edit-redo(e)()
+public defn undo (e:Edit) : edit-undo(e)()
 
-defmethod undo (edit:SlotEdit) :
-  apply(edit)(object(edit), prev(edit))
-  
-defmethod redo (edit:SlotEdit) :
-  apply(edit)(object(edit), next(edit))
+public defn SlotEdit (name:String, object:?, prev:?, next:?, setter:(?, ?) -> False) :
+  Edit(name, { setter(object, next) }, { setter(object, prev) })
   
 public defstruct Edits :
   index : Int with: (init => 0, setter => set-index)
