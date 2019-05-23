@@ -1,6 +1,7 @@
 defpackage edits :
   import core
   import collections
+  import utils
 
 public var *trace-edits?*:True|False = false
 val *edit-ids* = to-seq(0 to false)
@@ -11,13 +12,40 @@ public defstruct Edit :
   id : Int with: (init => next-edit-id())
   edit-redo : () -> ?
   edit-undo : () -> ?
+  value : ?
+
+public defn Edit (name:String, redo:() -> ?, undo:() -> ?) :
+  Edit(name, redo, undo, false)
+
+defmethod print (o:OutputStream, e:Edit) :
+  print(o, "Edit(%_, %_, %_)" % [name(e), id(e), value(e)])
 
 public defn redo (e:Edit) : edit-redo(e)()
 public defn undo (e:Edit) : edit-undo(e)()
 
 public defn SlotEdit (name:String, object:?, prev:?, next:?, setter:(?, ?) -> False) :
-  Edit(name, { setter(object, next) }, { setter(object, prev) })
+  Edit(name, { setter(object, next) }, { setter(object, prev) }, [ object, next ])
   
+public defn Edit (name:String, table:IntTable, key:Int, next:?) :
+  if key?(table, key) :
+    val prev = table[key]
+    Edit(name, { table[key] = next }, { table[key] = prev }, next)
+  else :    
+    Edit(name, { table[key] = next }, { remove(table, key) }, next)
+
+public defn AddDelEdit (name:String, table:IntTable, key:Int, next:?) :
+  Edit(name, { table[key] = next }, { remove(table, key) }, next)
+
+public defn DelAddEdit (name:String, table:IntTable, key:Int, prev:?) :
+  Edit(name, { remove(table, key) }, { table[key] = prev }, prev)
+
+public defn Edit<?T> (name:String, v:Vector<?T>, next:Seqable<T>) :
+  val prev = to-tuple $ v
+  Edit(name, { set-all(v, next) }, { set-all(v, prev) })
+
+public defn Edit<?T> (name:String, v:Vector<?T&Equalable>, elt:T&Equalable) :
+  Edit(name, { add(v, elt) }, { remove-item(v, elt) })
+
 public defstruct Edits :
   index : Int with: (init => 0, setter => set-index)
   marks : Vector<Int> with: (init => Vector<Int>())
