@@ -20,41 +20,77 @@ public defn SlotEdit (name:String, object:?, prev:?, next:?, setter:(?, ?) -> Fa
   
 public defstruct Edits :
   index : Int with: (init => 0, setter => set-index)
-  mark : Int with: (init => 0, setter => #set-mark)
+  marks : Vector<Int> with: (init => Vector<Int>())
   elts : Vector<Edit> with: (init => Vector<Edit>())
+with:
+  constructor => #Edits
+
+defmethod print (o:OutputStream, e:Edits) :
+  print(o, "Edits(%_, %_, %_)" % [index(e), marks(e), length(elts(e))])
+
+public defn Edits () :
+  val e = #Edits()
+  add(marks(e), 0)
+  e
+
+public defn find-next-target (edits:Edits, idx:Int) -> Int :
+  let loop (i:Int = 0) :
+    if i < length(marks(edits)) :
+      if marks(edits)[i] > idx :
+        marks(edits)[i]
+      else :
+        loop(i + 1)
+    else :
+      length(elts(edits))
+           
+public defn find-prev-target (edits:Edits, idx:Int) -> [Int, Int] :
+  let loop (i:Int = length(marks(edits)) - 1) :
+    if i > 0 :
+      if marks(edits)[i] < idx :
+        [marks(edits)[i], i]
+      else :
+        loop(i - 1)
+    else :
+      [0, 0]
 
 public defn undo (edits:Edits) :
-  println("UNDOING %_ EDITS" % [length(elts(edits))]) when *trace-edits?*
-  for i in (index(edits) - 1) through mark(edits) by -1 do :
+  println("UNDOING EDITS %_" % [edits])
+  val [target, mark-index] = find-prev-target(edits, index(edits))
+  println("FOUND TARGET %_ MARK-INDEX %_" % [target, mark-index])
+  for i in (index(edits) - 1) through target by -1 do :
     println("UNDOING %_ %_" % [i, elts(edits)[i]]) when *trace-edits?*
     undo(elts(edits)[i])
-  set-index(edits, mark(edits))
-  
-defn pop (edits:Edits, idx:Int) :
-  shorten(elts(edits), idx)
-  #set-mark(edits, min(mark(edits), length(elts(edits))))
+  set-index(edits, target)
   
 public defn redo (edits:Edits) :
-  for i in mark(edits) to length(elts(edits)) do :
+  println("REDOING EDITS %_" % [edits])
+  val next-target = find-next-target(edits, index(edits))
+  for i in index(edits) to next-target do :
     redo(elts(edits)[i])
-  set-index(edits, length(elts(edits)))
+  set-index(edits, next-target)
   
-public defn set-mark (edits:Edits) :
-  #set-mark(edits, index(edits))
+public defn add-mark (edits:Edits) :
+  add(marks(edits), index(edits))
 
 public defn clear (edits:Edits) :
   println("CLEARING")
   clear(elts(edits))
-  #set-mark(edits, 0)
+  shorten(marks(edits), 1)
   set-index(edits, 0)
 
-public var *edits*:False|Edits = false
-
+defn pop (edits:Edits, idx:Int) :
+  val [target, mark-index] = find-prev-target(edits, idx + 1)
+  println("POPPING %_ TO TARGET %_ MARK-INDEX %_" % [idx, target, mark-index])
+  shorten(marks(edits), mark-index + 1)
+  shorten(elts(edits), idx)
+  
 public defn add (edits:Edits, edit:Edit) :
   pop(edits, index(edits))
   add(elts(edits), edit)
   set-index(edits, length(elts(edits)))
   println("ADD %_ INDEX %_" % [edit, index(edits)]) when *trace-edits?* 
+
+public var *edits*:False|Edits = false
 
 public defn add-edit (f:() -> Edit) :
   add(*edits* as Edits, f()) when *edits* is Edits
