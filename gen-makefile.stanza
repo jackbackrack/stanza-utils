@@ -53,7 +53,7 @@ public defn gen-dependencies (i-all-files:Seqable<File>, stanza:String) -> Depen
       close(stream)
 
   val args = to-tuple $ cat-all([[stanza "analyze-dependencies"], filenames, ["-o", "boot/jrb-dependencies.txt"]])
-  call-system(stanza, args)
+  ;; call-system(stanza, args)
   read-dependencies("boot/jrb-dependencies.txt")
 
 public defn gen-makefile (i-all-files:Seqable<File>, deps:Dependencies) :
@@ -91,9 +91,11 @@ public defn gen-makefile (i-all-files:Seqable<File>, deps:Dependencies) :
   defn user? (name:Symbol) :
     kind(file-table[package-filename[name]]) != `stz
 
+  val pkg-files = HashTable<Symbol, File>()
   val pkgs = to-hashtable<Symbol, Package> $ generate<KeyValue<Symbol, Package>> :
     for file in files do :
       for package in packages(file) do :
+        pkg-files[name(package)] = file
         yield(name(package) => package)
       
   println("%__STZ_FLAGS = -pkg %_ %_" % [*build-dir* *build-dir* *build-opt*])
@@ -215,12 +217,17 @@ public defn gen-makefile (i-all-files:Seqable<File>, deps:Dependencies) :
       println("")
       val imports = join(unique(seq({ pkg-name(group-name[_]) }, filter(user?, direct-pkgs))), " ")
       println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), imports, compiler when compiler? else ""])
-      ;; println("%_/%_: %_ %* %_" % [*build-dir* app-filename, name(file), join(seq({ pkg-name(_) }, filter(user?, direct-pkgs)), " "), compiler when compiler? else ""])
       val flags = to-string $ ("${%__STZ_FLAGS} -ccflags \"${%__FLAGS}\"" % [*build-dir* app-filename])
       println("\t%_ %_ -o %_/${%__APP} -s %_/%_.s %_" %
         [compiler, string-join([("extend " when kind(file) == `mac else "") name(file)])
          *build-dir* app-filename *build-dir* app-filename ("" when kind(file) == `mac else flags)])
       println("")
+      if kind(file) == `app and *build-dir* == "debug" :
+        val source-filenames = to-tuple $ seq({ name(pkg-files[name(_)]) }, filter({ user?(name(_)) }, used-pkgs))
+        println("%_/%_-repl: %*" % [*build-dir* app-filename, imports])
+        println("\t${SYNTAX_STANZA} gen-vmbindings %s -o debug/%_.vmbindings" % [source-filenames, app-filename])
+        println("\tstanza extend ${SYNTAX_FILES} debug/%_.vmbindings -o debug/%_-repl -optimize -ccflags \"${%__FLAGS}\"" % [app-filename, app-filename, app-filename])
+        println("")
   false
 
 defn InvalidExtensionError (filename:String) :
