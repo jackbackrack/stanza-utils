@@ -43,8 +43,11 @@ public defn Edit<?T> (name:String, v:Vector<?T>, next:Seqable<T>) :
   val prev = to-tuple $ v
   Edit(name, { set-all(v, next) }, { set-all(v, prev) })
 
-public defn Edit<?T> (name:String, v:Vector<?T&Equalable>, elt:T&Equalable) :
+public defn AddDelEdit<?T> (name:String, v:Vector<?T&Equalable>, elt:T&Equalable) :
   Edit(name, { add(v, elt) }, { remove-item(v, elt) })
+
+public defn DelAddEdit<?T> (name:String, v:Vector<?T&Equalable>, elt:T&Equalable) :
+  Edit(name, { remove-item(v, elt) }, { add(v, elt) })
 
 public defstruct Edits :
   index : Int with: (init => 0, setter => set-index)
