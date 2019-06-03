@@ -85,15 +85,15 @@ public defn find-prev-target (edits:Edits, idx:Int) -> [Int, Int] :
       [0, 0]
 
 public defn undo (edits:Edits) :
-  println("UNDOING EDITS %_" % [edits])
+  ;; println("UNDOING EDITS %_" % [edits])
   val [target, mark-index] = find-prev-target(edits, index(edits))
   for i in (index(edits) - 1) through target by -1 do :
-    println("UNDOING %_ %_" % [i, elts(edits)[i]]) when *trace-edits?*
+    ;; println("UNDOING %_ %_" % [i, elts(edits)[i]]) when *trace-edits?*
     undo(elts(edits)[i])
   set-index(edits, target)
   
 public defn redo (edits:Edits) :
-  println("REDOING EDITS %_" % [edits])
+  ;; println("REDOING EDITS %_" % [edits])
   val next-target = find-next-target(edits, index(edits))
   for i in index(edits) to next-target do :
     redo(elts(edits)[i])
@@ -103,7 +103,7 @@ public defn add-mark (edits:Edits) :
   add(marks(edits), index(edits))
 
 public defn clear (edits:Edits) :
-  println("CLEARING")
+  ;; println("CLEARING")
   clear(elts(edits))
   shorten(marks(edits), 1)
   set-index(edits, 0)

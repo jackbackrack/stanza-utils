@@ -112,9 +112,12 @@ public defn gen-makefile (i-all-files:Seqable<File>, deps:Dependencies) :
   println("")
 
   defn compiler-of (file:File) -> [String, True|False] :
-    match(syntax(file)) :
-      (s:Syntax) : [string-join([*build-dir* "/" value(s) "-stanza"]), true]
-      (s:False) : ["${STZ}", false]
+    ["${SYNTAX_STANZA}", false]
+
+  ;; defn compiler-of (file:File) -> [String, True|False] :
+  ;;   match(syntax(file)) :
+  ;;     (s:Syntax) : [string-join([*build-dir* "/" value(s) "-stanza"]), true]
+  ;;     (s:False) : ["${STZ}", false]
   
   val group-name = HashTable<Symbol, Symbol>()
   
