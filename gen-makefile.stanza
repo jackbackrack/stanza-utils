@@ -227,7 +227,7 @@ public defn gen-makefile (i-all-files:Seqable<File>, deps:Dependencies) :
       println("")
       if kind(file) == `app and *build-dir* == "debug" :
         val source-filenames = to-tuple $ seq({ name(pkg-files[name(_)]) }, filter({ user?(name(_)) }, used-pkgs))
-        println("%_/%_-repl: %*" % [*build-dir* app-filename, imports])
+        println("%_/%_-repl: %_/%_ %*" % [*build-dir* app-filename, *build-dir* app-filename, imports])
         println("\t${SYNTAX_STANZA} gen-vmbindings %s -o debug/%_.vmbindings" % [source-filenames, app-filename])
         println("\tstanza extend ${SYNTAX_FILES} debug/%_.vmbindings -o debug/%_-repl -optimize -ccflags \"${%__FLAGS}\"" % [app-filename, app-filename, app-filename])
         println("")
