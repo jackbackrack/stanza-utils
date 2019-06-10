@@ -47,6 +47,9 @@ public defn rnd-indices (len:Int) -> Array<Int> :
 public defn rnd-order<?T> (elts:IndexedCollection<?T>&Lengthable) -> Seq<T> :
   for i in rnd-indices(length(elts)) seq : elts[i]
 
+public defn rnd-order<?T> (elts:Tuple<?T>) -> Seq<T> :
+  for i in rnd-indices(length(elts)) seq : elts[i]
+
 public defn successive-pairs<?T> (ielts:Seqable<?T>) -> Seq<[T, T]> :
   val elts = to-seq(ielts)
   var prev:T = next(elts)
