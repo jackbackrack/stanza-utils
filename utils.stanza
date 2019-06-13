@@ -58,6 +58,11 @@ public defn successive-pairs<?T> (ielts:Seqable<?T>) -> Seq<[T, T]> :
     prev = e
     res
 
+public defn successive-pairs-wrapped<?T> (ielts:Seqable<?T>) -> Seq<[T, T]> :
+  val elts = to-seq(ielts)
+  val first = next(elts)
+  successive-pairs $ cat-all $ [[first] elts [first]]
+
 public defn last<?T> (s:IndexedCollection<?T>&Lengthable) -> T :
   s[length(s) - 1]
 
