@@ -9,6 +9,7 @@ defregistry stanza-utils :
   file "compiler/stz-algorithms.stanza" stz
   file "compiler/stz-core-macros.stanza" stz
   file "compiler/stz-params.stanza" stz
+  file "compiler/stz-serializer.stanza" stz
   file "eval.stanza"
   file "time.c"
   file "efsw.cpp" :
