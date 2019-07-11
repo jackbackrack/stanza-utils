@@ -1,0 +1,276 @@
+defpackage bst :
+  import core
+  import collections
+  import utils
+
+public deftype BST<K,V> <: Collection<KeyValue<K,V>> & Lengthable
+defmulti red? (t:BST) -> True|False
+defmulti left<?K,?V> (t:BST<?K,?V>) -> BST<K,V>
+defmulti right<?K,?V> (t:BST<?K,?V>) -> BST<K,V>
+
+public defmulti keys<?K> (t:BST<?K,?>) -> Seqable<K>
+public defmulti values<?V> (t:BST<?,?V>) -> Seqable<V>
+
+defmethod keys<?K> (t:BST<?K,?>) : seq(key, t)
+defmethod values<?V> (t:BST<?,?V>) : seq(value, t)
+
+defmethod length (tree:BST) -> Int :
+  match(tree) :
+    (t:NilBST) : 0
+    (t:FullBST) : length(left(t)) + length(right(t)) + 1
+
+public defn empty? (t:BST) -> True|False :
+  t is NilBST  
+
+public defn to-bst<?K,?V> (entries:Seqable<KeyValue<?K&Comparable,?V>>) -> BST<K,V> :
+  var t:BST<K,V> = BST()
+  for e in entries do :
+    t = insert(t, key(e), value(e))
+  t
+
+public defn to-bst<?K> (elts:Seqable<?K&Comparable>) -> BST<K,K> :
+  var t:BST<K,K> = BST()
+  for e in elts do :
+    t = add(t, e)
+  t
+
+defmethod to-seq<?K,?V> (tree:BST<?K,?V>) :
+  generate<KeyValue<K,V>> :
+    let loop (t:BST<K,V> = tree) :
+      match(t) :
+        (t:NilBST) :
+          false
+        (t:FullBST<K,?>) :
+          yield(key(t) => value(t))
+          loop(left(t))
+          loop(right(t))
+
+defstruct FullBST<K,V> <: BST<K,V> :
+  key : K&Comparable
+  value : V with: (updater => update-value)
+  red? : True|False with: (as-method => true)
+  left : BST<K,V> with: (as-method => true)
+  right : BST<K,V> with: (as-method => true)
+
+defn update-red?<?K,?V> (t:FullBST<?K,?V>, r?:True|False) -> FullBST<K,V> :
+  FullBST<K,V>(key(t), value(t), r?, left(t), right(t))
+defn update-left<?K,?V> (t:FullBST<?K,?V>, left:BST<K,V>) -> FullBST<K,V> :
+  FullBST<K,V>(key(t), value(t), red?(t), left, right(t))
+defn update-right<?K,?V> (t:FullBST<?K,?V>, right:BST<K,V>) -> FullBST<K,V> :
+  FullBST<K,V>(key(t), value(t), red?(t), left(t), right)
+
+defstruct NilBST <: BST<Void,Void>
+defmethod red? (t:NilBST) : false
+defmethod left (t:NilBST) : t
+defmethod right (t:NilBST) : t
+
+public defn BST () :
+  NilBST()
+
+defn BST<?K,?V> (k:?K, v:?V, red?:True|False) -> FullBST<K,V> :
+  FullBST<K,V>(k as K&Comparable, v, red?, NilBST(), NilBST())
+
+defmethod print (o:OutputStream, t:FullBST) :
+  print(o, "BST(%_, %_, %_, %_, %_)" % [key(t), value(t), red?(t), left(t), right(t)])
+
+defmethod print (o:OutputStream, t:NilBST) :
+  print(o, "NilBST()")
+
+public defn key?<?K> (tree:BST<?K,?>, k:K&Comparable) -> True|False :
+  match(tree) :
+    (t:NilBST) :
+      false
+    (t:FullBST<K,?>) :
+      val cmp = compare(k, key(t))
+      if cmp < 0 :
+        key?(left(t), k)
+      else if cmp > 0 :
+        key?(right(t), k)
+      else :
+        true
+
+public defn get?<?K,?V,?D> (tree:BST<?K,?V>, k:K&Comparable, default:?D) -> D|V :
+  match(tree) :
+    (t:NilBST) :
+      default
+    (t:FullBST<K,V>) :
+      val cmp = compare(k, key(t))
+      if cmp < 0 :
+        get?(left(t), k, default)
+      else if cmp > 0 :
+        get?(right(t), k, default)
+      else :
+        value(t)
+
+public defn get?<?K,?V> (tree:BST<?K,?V>, k:K&Comparable) -> False|V :
+  get?(tree, k, false)
+
+public defn get<?K,?V> (tree:BST<?K,?V>, k:K&Comparable) -> V :
+  match(get?(tree, k)) :
+    (f:False) : fatal("Unable to find key %_" % [k])
+    (v:V) : v
+
+public defn dump (root:BST) :
+  let loop (t:BST = root, d:Int = 0) :
+    match(t) :
+      (t:NilBST) : t
+      (t:FullBST) :
+        for i in 0 to d do : print("  ")
+        println("%_ %_ %_" % [key(t), value(t), red?(t)])
+        loop(left(t), d + 1)
+        loop(right(t), d + 1)
+
+defn color-flip<?K,?V> (h:FullBST<?K,?V>) -> FullBST<K,V> :
+  defn flip (t:BST<K,V>) -> BST<K,V> :
+    match(t) :
+      (t:NilBST) : t
+      (t:FullBST<K,V>) : update-red?(t, not red?(t))
+  FullBST<K,V>(key(h), value(h), not red?(h), flip(left(h)), flip(right(h)))
+
+defn rotate-left<?K,?V> (h:FullBST<?K,?V>) -> FullBST<K,V> :
+  val x = right(h) as FullBST<K,V>
+  FullBST<K,V>(key(x), value(x), red?(h),
+                FullBST<K,V>(key(h), value(h), true, left(h), left(x)), right(x))
+
+defn rotate-right<?K,?V> (h:FullBST<?K,?V>) -> FullBST<K,V> :
+  val x = left(h) as FullBST<K,V>
+  FullBST<K,V>(key(x), value(x), red?(h),
+                left(x), FullBST<K,V>(key(h), value(h), true, right(x), right(h)))
+
+public defn insert<?K,?V> (tree:BST<?K,?V>, k:?K&Comparable, v:?V) -> FullBST<K,V> :
+  val res = let loop (t:BST<K,V> = tree, d:Int = 0) :
+    match(t) :
+      (t:NilBST) :
+        BST(k, v, true)
+      (t:FullBST<K,V>) :
+        val cmp = compare(k, key(t))
+        val it =
+          if cmp < 0 :
+            update-left(t, loop(left(t), d + 1))
+          else if cmp > 0 :
+            update-right(t, loop(right(t), d + 1))
+          else :
+            update-value(t, v)
+        val t0 = rotate-left(it)  when (red?(right(it)) and not red?(left(it)))  else it
+        val t1 = rotate-right(t0) when (red?(left(t0)) and red?(left(left(t0)))) else t0
+        val t2 = color-flip(t1)   when (red?(left(t1)) and red?(right(t1)))      else t1
+        t2
+  update-red?(res, false)
+
+public defn add<?K> (tree:BST<?K,?K>, k:?K&Comparable) -> FullBST<K,K> :
+  insert(tree, k, k)
+
+defn move-red-right<?K,?V> (tree:FullBST<?K,?V>) -> FullBST<K,V> :
+  val t = color-flip $ tree
+  if red?(left(left(t))) :
+    color-flip $ rotate-right $ t
+  else :
+    t
+
+defn balance<?K,?V> (tree:FullBST<?K,?V>) -> FullBST<K,V> :
+  val t0 = rotate-left(tree) when red?(right(tree)) else tree
+  val t1 = rotate-right(t0) when (red?(left(t0)) and red?(left(left(t0)))) else t0
+  val t2 = color-flip(t1) when (red?(left(t1)) and red?(right(t1))) else t1
+  t2
+
+defn move-red-left<?K,?V> (tree:FullBST<?K,?V>) -> FullBST<K,V> :
+  val t = color-flip $ tree
+  if red?(left(right(t))) :
+    color-flip $ rotate-left $ update-right(t, rotate-right(right(t) as FullBST<K,V>))
+  else :
+    t
+
+defn remove-max<?K,?V> (tree:FullBST<?K,?V>) -> BST<K,V> :
+  let remove (h:FullBST<K,V> = tree) :
+    val t0 = rotate-right(h) when red?(left(h)) else h
+    match(right(t0)) :
+      (rt:NilBST) : BST()
+      (rt:FullBST<K,V>) :
+        val t1 = move-red-right(t0) when not (red?(rt) or red?(left(rt))) else t0
+        balance $ update-left(t1, remove(right(t1) as FullBST<K,V>))
+      
+defn remove-min<?K,?V> (tree:FullBST<?K,?V>) -> BST<K,V> :
+  let remove (h:FullBST<K,V> = tree) :
+    match(left(h)) :
+      (lf:NilBST) : BST()
+      (lf:FullBST<K,V>) :
+        val t = move-red-left(h) when not (red?(lf) or red?(left(lf))) else h
+        val res = balance $ update-left(t, remove(left(t) as FullBST<K,V>))
+        res
+
+defn min-node<?K,?V> (tree:FullBST<?K&Comparable,?V>) -> FullBST<K,V> :
+  let find (t:FullBST<K,V> = tree) :
+    match(left(t)) :
+      (lt:NilBST) : t
+      (lt:FullBST<K,V>) : find(lt)
+
+public defn remove<?K,?V> (tree:BST<?K,?V>, k:K&Comparable) -> BST<K,V> :
+  defn* remove-it (tree:BST<K,V>) :
+    match(tree) :
+      (t:NilBST) :
+        fatal("No key exists %_" % [k])
+      (t:FullBST<K,V>) :
+        val res =
+          if k < key(t) :
+            val t0 = move-red-left(t) when not (red?(left(t)) or red?(left(left(t)))) else t
+            update-left(t0, remove-it(left(t0)))
+          else :
+            val t0 = rotate-right(t) when red?(left(t)) else t
+            if compare(k, key(t0)) == 0 and empty?(right(t0)) :
+              BST()
+            else :
+              val t1 = move-red-right(t0) when not (red?(right(t0)) or red?(left(right(t0)))) else t0
+              if compare(k, key(t1)) == 0 :
+                val mkn = min-node(right(t1) as FullBST<K&Comparable,V>)
+                val res = FullBST<K,V>(key(mkn), value(mkn), red?(t1), left(t1), remove-min(right(t1) as FullBST<K,V>))
+                res
+              else :
+                update-right(t1, remove-it(right(t1)))
+        val rr = match(res) :
+          (t:NilBST) : t
+          (t:FullBST) : balance(t)
+        rr
+  if not key?(tree, k) :
+    tree
+  else :
+    match(tree) :
+      (t:NilBST) : t
+      (t:FullBST) : 
+        val t0 = update-red?(t, true) when not (red?(left(t)) or red?(left(left(t)))) else t
+        match(remove-it(t0)) :
+          (t:NilBST) : t
+          (t:FullBST) : update-red?(t, false)
+
+;;; CHECKS
+
+defn two-three? (root:BST) -> True|False :
+  let check (x:BST = root, root?:True|False = true) :
+    match(x) :
+      (t:NilBST) :
+        true
+      (t:FullBST) :
+        if red?(right(t)) :
+          false
+        else if not root? and red?(t) and red?(left(t)) :
+          false
+        else :
+          check(left(t), false) and check(right(t), false)
+
+defn balanced? (root:BST) -> True|False :
+  val blacks = let loop (t:BST = root, blacks:Int = 0) :
+    match(t) :
+      (t:NilBST) : blacks
+      (t:FullBST) : loop(left(t), blacks + to-int(not red?(t)))
+  let b? (x:BST = root, blacks:Int = blacks) :
+    match(x) :
+      (t:NilBST) :
+        blacks == 0
+      (t:FullBST) :
+        val nxt-blacks = blacks when red?(x) else (blacks - 1)
+        b?(left(t), nxt-blacks) and b?(right(t), nxt-blacks)
+
+defn check (tree:BST) -> True|False :
+  if not balanced?(tree) : println("BAD: NOT BALANCED")
+  if not two-three?(tree) : println("BAD: NOT 23")
+  true
+

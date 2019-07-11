@@ -23,9 +23,19 @@ public defn to-stanza (any:Token) -> ? :
 
 ;;; GENERAL
 
+public defn to-int (x:True|False) : 1 when x else 0
+
+public defn println-depth (d:Int, s) :
+  for i in 0 to d do : print("  ")
+  println(s)
+
 public defn set-all<?T> (v:Vector<?T>, elts:Seqable<T>) :
   clear(v)
   add-all(v, elts)
+
+public defn set-all<?T> (s:HashSet<?T>, elts:Seqable<T>) :
+  clear(s)
+  for e in elts do : add(s, e)
 
 public defn scan<?T,?S> (f: (T, S) -> ?T, x0: ?T, xs:Seqable<?S>) -> Seq<T> :
    var accum = x0

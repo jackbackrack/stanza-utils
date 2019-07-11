@@ -47,6 +47,16 @@ public defn AddDelEdit (name:String, table:HashTable, key:?, next:?) :
 public defn DelAddEdit (name:String, table:HashTable, key:?, prev:?) :
   Edit(name, { remove(table, key) }, { table[key] = prev }, prev)
 
+public defn AddDelEdit (name:String, table:HashSet, key:?) :
+  Edit(name, { add(table, key) }, { remove(table, key) })
+
+public defn DelAddEdit (name:String, table:HashSet, key:?) :
+  Edit(name, { remove(table, key) }, { add(table, key) })
+
+public defn Edit<?T> (name:String, s:HashSet<?T>, next:Seqable<T>) :
+  val prev = to-tuple $ s
+  Edit(name, { set-all(s, next) }, { set-all(s, prev) })
+
 public defn Edit<?T> (name:String, v:Vector<?T>, next:Seqable<T>) :
   val prev = to-tuple $ v
   Edit(name, { set-all(v, next) }, { set-all(v, prev) })

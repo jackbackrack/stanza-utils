@@ -48,3 +48,4 @@ defregistry stanza-utils :
   file "read-dependencies.stanza"
   file "gen-makefile.stanza" app
   file "edits.stanza"
+  file "bst.stanza"

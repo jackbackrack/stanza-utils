@@ -1,0 +1,64 @@
+defpackage bst-app :
+  import core
+  import collections
+  import bst
+
+defn to-int (x:True|False) : 1 when x else 0
+
+defn println-depth (d:Int, s) :
+  for i in 0 to d do : print("  ")
+  println(s)
+
+public defn rndi (lo:Int, hi:Int) -> Int :
+  (rand() % (hi - lo + 1)) + lo
+
+public defn rnd<?T> (elts:Tuple<?T>) -> T :
+  elts[rndi(0, length(elts) - 1)]
+
+defn main () :
+  ;; var seed:Int = -1045719535
+  var seed:Int = -1
+  if seed == -1 :
+    seed = to-int $ current-time-us()
+    println("--seed %_" % [seed])
+  srand(to-long $ seed)
+  var t:BST<Int,Int> = BST()
+  var h = IntTable<Int>()
+  if false :
+    val ks = [23 38 39 41 49 57 60 64 82 83]
+    for (k in ks, i in 0 to false) do :
+      println("I %_" % [k])
+      t = insert(t, k, i)
+      check(t)
+      dump(t)
+  else :
+    for i in 0 to 1000 do :
+      println("--- %_ ---" % [i])
+      val f = rndi(0, 100)
+      if f <= 40 or length(h) == 0 :
+        val k = rndi(0, 100)
+        val v = rndi(0, 100)
+        println("I %_ %_" % [k, v])
+        t = insert(t, k, v)
+        h[k] = v
+        if length(t) != length(h) :
+          println("INSERT %_ %_ DIFFERENT LENGTH %_ %_" % [k, v, length(t), length(h)])
+      else if f <= 80 :
+        val k = rnd(to-tuple $ keys(h))
+        println("D %_" % [k])
+        t = remove(t, k)
+        remove(h, k)
+        if length(t) != length(h) :
+          println("REMOVE %_ DIFFERENT LENGTH %_ %_" % [k, length(t), length(h)])
+      else :
+        val k = rnd(to-tuple $ keys(h))
+        println("G %_" % [k])
+        val tv = get(t, k)
+        val hv = h[k]
+        if tv != hv :
+          println("GET %_ DIFFERENT VALUE %_ %_" % [k, tv, hv])
+      ;; println("LEN %_ " % [length(t)])
+      check(t)
+      dump(t)
+
+main()
