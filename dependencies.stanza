@@ -79,9 +79,9 @@ defn obj-filename (filename:String) :
 ;; TODO: CURRENTLY DOESN'T HELP BECAUSE AREN'T PART OF MODELED DEPENDENCIES
 defn update-cpp-link (link:Link) :
   switch(os(link)) :
-  `Darwin :    [Link(os(link), to-tuple $ cat(value(link), ["-lc++"]))]
-  `GNU/Linux : [Link(os(link), to-tuple $ cat(value(link), ["-lstdc++"]))]
-  `* :         cat(update-cpp-link(Link(`Darwin, value(link))), update-cpp-link(Link(`GNU/Linux, value(link))))
+    `Darwin :    [Link(os(link), to-tuple $ cat(value(link), ["-lc++"]))]
+    `GNU/Linux : [Link(os(link), to-tuple $ cat(value(link), ["-lstdc++"]))]
+    `* :         cat(update-cpp-link(Link(`Darwin, value(link))), update-cpp-link(Link(`GNU/Linux, value(link))))
 
 defn update-cpp-package (pkg:Package) :
   Package(name(pkg), dependencies(pkg), to-list $ cat-all(seq(update-cpp-link, links(pkg))))
