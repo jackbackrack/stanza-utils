@@ -253,10 +253,10 @@ public defn eval (env:List<Frame>, type?:True|False, sexpr) -> ? :
           `$def :
             val inits = eval(env, l[3])
             match(l[1]):
-            (name:Symbol) : add-binding(env, name, inits)
-            (names:List) :
-              for (name in tail(names), init in inits) do:
-                add-binding(env, name, init)
+              (name:Symbol) : add-binding(env, name, inits)
+              (names:List) :
+                for (name in tail(names), init in inits) do:
+                  add-binding(env, name, init)
           `$or :
             val t1 = eval(env, true, l[1])
             val t2 = eval(env, true, l[2])
