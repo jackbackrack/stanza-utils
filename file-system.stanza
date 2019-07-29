@@ -12,7 +12,8 @@ public defn split-pathname (pathname:String, c:Char) -> [String, String]:
     (i:Int)   : [pathname[0 to (i + 1)], pathname[(i + 1) to false]]
 
 public defn dir-name (pathname:String) -> String :
-  split-pathname(pathname, '/')[0]
+  val [dir, base] = split-pathname(pathname, '/')
+  "." when dir == "" else dir
 
 public defn base-name (pathname:String) -> String :
   split-pathname(pathname, '/')[1]
