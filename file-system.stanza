@@ -46,8 +46,8 @@ extern opendir: (ptr<byte>) -> ptr<?>
 extern readdirent: (ptr<?>, ptr<?>) -> int
 extern closedir: (ptr<?>) -> int
 
-lostanza defn mkdir (dir:ref<Dir>, mode:ref<Int>) -> ref<Int> :
-  val res = call-c mkdir(dir.value, mode.value)
+public lostanza defn mkdir (dir:ref<String>, mode:ref<Int>) -> ref<Int> :
+  val res = call-c mkdir(addr!(dir.chars), mode.value)
   return new Int{res}
 
 lostanza deftype Dir :
