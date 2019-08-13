@@ -53,7 +53,7 @@ class Watcher {
 Watcher* new_watcher (void) {
   Watcher* res = new Watcher();
   res->listener = new UpdateListener(&res->queue);
-  efsw::FileWatcher *fw = new efsw::FileWatcher( true );
+  efsw::FileWatcher *fw = new efsw::FileWatcher( false );
   res->watcher = fw;
   fw->followSymlinks( false );
   fw->allowOutOfScopeLinks( false );
