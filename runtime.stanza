@@ -1,0 +1,26 @@
+defpackage runtime :
+  import core
+  import collections
+
+extern rcv_data: (ptr<byte>, long) -> int
+
+val stream-ids = to-seq(0 to false)
+val streams = IntTable<Seq<String>>()
+
+public defn stream-register (stream:Seq<String>) :
+  val id = next(stream-ids)
+  streams[id] = stream
+  snd(to-string(id))
+
+public defn stream-next (id:Int) :
+  snd(next(streams[id]))
+
+public defn stream-empty? (id:Int) :
+  snd(to-string(empty?(streams[id])))
+
+public defn stream-free (id:Int) :
+  snd(to-string(remove(streams, id)))
+
+public lostanza defn snd (value:ref<String>) -> ref<False> :
+  call-c rcv_data(addr!(value.chars), length(value).value)
+  return false

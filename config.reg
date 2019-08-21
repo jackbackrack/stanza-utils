@@ -49,3 +49,5 @@ defregistry stanza-utils :
   file "gen-makefile.stanza" app
   file "edits.stanza"
   file "bst.stanza"
+  file "repl-eval.stanza"
+  file "runtime.stanza"

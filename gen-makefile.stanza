@@ -89,7 +89,8 @@ public defn gen-makefile (i-all-files:Seqable<File>, deps:Dependencies) :
   val file-table = to-hashtable<String, File> $ seq(fn (f) : name(f) => f, files)
 
   defn user? (name:Symbol) :
-    kind(file-table[package-filename[name]]) != `stz
+    val filename = package-filename[name]
+    key?(file-table, filename) and kind(file-table[filename]) != `stz
 
   val pkg-files = HashTable<Symbol, File>()
   val pkgs = to-hashtable<Symbol, Package> $ generate<KeyValue<Symbol, Package>> :
@@ -127,24 +128,27 @@ public defn gen-makefile (i-all-files:Seqable<File>, deps:Dependencies) :
 
   defn print-rule (team:List<Symbol>) :
     val e = head(team)
-    val file = file-table[package-filename[e]]
-    if contains?([`std, `mac, `app, `plugin], kind(file)) :
-      print("%s: %s" % [seq(pkg-name, team) seq({package-filename[_]}, team)])
-      for guy in team do :
-        for import in unique(seq({ group-name[_] }, graph[guy])) do :
-          if e != import : 
-            print(" %_" % [pkg-name(import)]) when user?(import)
-        for dep in dependencies(pkgs[guy]) do :
-          print(" %_" % [value(dep)])
-      val [compiler, compiler?] = compiler-of(file-table[package-filename[e]])
-      print(" %_" % [compiler]) when compiler?
-      println("")
-      val file-set = HashSet<String>()
-      for pkg-name in team do :
-        add(file-set, package-filename[pkg-name]) when user?(pkg-name)
-      val files = to-tuple $ file-set
-      println("\t%_ %_ ${%__STZ_FLAGS}" % [compiler string-join(files, " ") *build-dir*])
-      println("")
+    if key?(file-table, package-filename[e]) :
+      val file = file-table[package-filename[e]]
+      if contains?([`std, `mac, `app, `plugin], kind(file)) :
+        print("%s: %s" % [seq(pkg-name, team) seq({package-filename[_]}, team)])
+        for guy in team do :
+          for import in unique(seq({ group-name[_] }, graph[guy])) do :
+            if e != import : 
+              print(" %_" % [pkg-name(import)]) when user?(import)
+          for dep in dependencies(pkgs[guy]) do :
+            print(" %_" % [value(dep)])
+        val [compiler, compiler?] = compiler-of(file-table[package-filename[e]])
+        print(" %_" % [compiler]) when compiler?
+        println("")
+        val file-set = HashSet<String>()
+        for pkg-name in team do :
+          add(file-set, package-filename[pkg-name]) when user?(pkg-name)
+        val files = to-tuple $ file-set
+        println("\t%_ %_ ${%__STZ_FLAGS}" % [compiler string-join(files, " ") *build-dir*])
+        println("")
+    else :
+      println("# !!! COULDN'T FIND %_ IN FILE-TABLE" % [package-filename[e]])
 
   for group in group-dependencies(deps) do :
     print-rule(key(group))

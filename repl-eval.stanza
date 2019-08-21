@@ -1,0 +1,76 @@
+defpackage repl-eval :
+  import core
+  import collections
+  import reader
+  import stz/core-macros
+  import stz/repl
+
+public val incoming = Queue<String>()
+
+extern defn rcv_data (raw-data:ptr<byte>, length:long) -> int :
+  add(incoming, String(length, raw-data))
+  return 0
+
+defn parse (form) -> ? :
+  match-syntax[core](form) :
+    (?es:#exp ... ?rest ...) :
+       es          
+defn to-repl-exp (s:String) :
+  Eval(parse(read-all(s)))
+
+var *inside-pkg*:False|Symbol = false
+
+defn do-inside (repl:REPL, pkg:Symbol) :
+  ;; println("DO-INSIDE %_" % [pkg])
+  if *inside-pkg* is False or (*inside-pkg* as Symbol) != pkg :
+    eval-exp(repl, Inside(pkg))
+  *inside-pkg* = pkg
+
+defn do-queue-eval (repl:REPL, pkg:Symbol, s:String) -> String :
+  do-inside(repl, pkg)
+  ;; println("DO-EVAL PKG %_ S %_" % [pkg, s])
+  eval-exp(repl, to-repl-exp(s))
+  val res = pop(incoming)
+  ;; println("EVAL %_ RES %_" % [s, res])
+  res
+
+;; TODO: SHOULD BE KEYED TO REPL
+
+public defstruct Package :
+  name : Symbol
+  listeners : HashTable<Symbol, (() -> ?)> with: ( init => HashTable<Symbol, (() -> ?)>() )
+
+public var *packages* = HashTable<Symbol, Package>()
+
+public defn install-package-listener (pkg:Symbol, name:Symbol, callback:() -> ?) :
+  listeners(*packages*[pkg])[name] = callback
+
+public defn remove-package-listener (pkg:Symbol, name:Symbol) :
+  remove(listeners(*packages*[pkg]), name)
+
+defn maybe-update-listeners (pkg:Symbol) :
+  if key?(*packages*, pkg) :
+    for callback in values(listeners(*packages*[pkg])) do :
+      callback()
+
+public defn load (repl:REPL, pkg:Symbol, filenames:Tuple<String>) -> False :
+  println("LOAD %_ %_" % [pkg, filenames])
+  eval-exp(repl, Load(filenames))
+  if not key?(*packages*, pkg) :
+    *packages*[pkg] = Package(pkg)
+  maybe-update-listeners(pkg)
+
+public defn load (repl:REPL, pkg:Symbol, s:String) -> False :
+  eval-exp(repl, to-repl-exp(s))
+  maybe-update-listeners(pkg)
+
+public defn eval (repl:REPL, pkg:Symbol, e:String) -> String :
+  do-queue-eval(repl, pkg, string-join(["snd(" e ")"]))
+
+public defn evals (repl:REPL, pkg:Symbol, e:String) -> Seq<String> :
+  val id-res = do-queue-eval(repl, pkg, string-join(["stream-register(" e ")"]))
+  val sid = to-int(id-res)
+  generate<String> :
+    while do-queue-eval(repl, pkg, string-join $ ["stream-empty?(" sid ")"]) == "false" :
+      yield(do-queue-eval(repl, pkg, string-join $ ["stream-next(" sid ")"]))
+    do-queue-eval(repl, pkg, string-join $ ["stream-free(" sid ")"])
