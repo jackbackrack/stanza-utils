@@ -16,6 +16,9 @@ extern free: (ptr<byte>) -> int
 protected extern strerror: (int) -> ptr<byte>
 protected extern get_errno: () -> int
 extern socket_poll: (int) -> int
+extern server_socket_poll: (int, int, int) -> int
+extern server_socket_open: (int) -> int
+extern printf: (ptr<byte>, ? ...) -> int
 
 public lostanza defn Socket (fd:ref<Int>) -> ref<Socket> :
   return new Socket{fd.value}
@@ -60,6 +63,7 @@ public lostanza defn socket-fd (s:ref<Socket>) -> ref<Int> :
   return new Int{s.fd}
 
 public deftype BufferedSocket <: MyBufferedInputStream & OutputStream
+public defmulti socket (s:BufferedSocket) -> Socket 
 
 public defn BufferedSocket (fd:Int) :
   val sock = Socket(fd)
@@ -68,6 +72,20 @@ public defn BufferedSocket (fd:Int) :
     defmethod buffer (this) : buf
     defmethod print (this, s:String) : send(sock, s)
     defmethod print (this, c:Char) : print(this, to-string(c))
+    defmethod socket (this) : sock
+
+defmethod put (s:BufferedSocket, x:Byte) :
+  print(s, to-char(x))
+
+defmethod get-byte (s:BufferedSocket) -> False|Byte :
+  match(get-char(s)) :
+    (f:False) : false
+    (c:Char) : to-byte(c)
+
+public defn close (s:BufferedSocket) : close(socket(s))
+
+public defn get-line (s:BufferedSocket) -> String :
+  get-chars-while(s, { _ != '\n' })
 
 extern socket_client: (ptr<byte>, int) -> int
 extern socket_server: (int, ptr<((int) -> int)>, ptr<((int, ptr<byte>) -> int)>, ptr<((int) -> int)>) -> int
@@ -148,3 +166,29 @@ public lostanza defn Server
   val fd = call-c socket_server(port.value, addr(do_open_callback), addr(do_read_callback), addr(do_close_callback))
   if fd < 0 : throw(SocketOpenException(String("localhost"), port, linux-error-msg()))
   return false
+
+public lostanza deftype Server :
+  fd : int
+
+public defstruct ServerSocketOpenException <: IOException :
+   portno: Int
+   cause: String
+
+defmethod print (o:OutputStream, e:ServerSocketOpenException) :
+   print(o, "Error occurred when attempting to open server socket %_. %_." % [portno(e), cause(e)])
+
+public lostanza defn Server (port:ref<Int>) -> ref<Server> :
+  val fd = call-c server_socket_open(port.value)
+  if fd < 0 : throw(ServerSocketOpenException(port, linux-error-msg()))
+  return new Server{fd}
+
+public lostanza defn poll (server:ref<Server>, secs:ref<Int>, usecs:ref<Int>) -> ref<False|BufferedSocket> :
+  val fd = call-c server_socket_poll(server.fd, secs.value, usecs.value)
+  if fd > 0 :
+    return BufferedSocket(new Int{fd})
+  else :
+    return false
+
+public lostanza defn close (server:ref<Server>) -> ref<Int> :
+  val res = call-c close(server.fd)
+  return new Int{res}

@@ -145,6 +145,51 @@ int socket_server(int portno, fd_open_callback_t do_open, fd_read_callback_t do_
   return 0;
 }
 
+int server_socket_open (int portno) {
+  int fd = socket(AF_INET, SOCK_STREAM, 0);
+  int enable = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+    return -1;
+
+  // printf("LISTEN FD %d\n", listen_desc);
+  
+  if (fd < 0)
+    return fd;
+
+  struct sockaddr_in serv_addr;
+
+  bzero((char *)&serv_addr, sizeof(serv_addr));
+
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = INADDR_ANY;
+  serv_addr.sin_port = htons(portno);
+
+  if (bind(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    return -1;
+
+  listen(fd, 5);
+
+  return fd;
+}
+
+int server_socket_poll (int fd, int secs, int usecs) {
+  struct timeval timeout;
+  timeout.tv_sec  = secs;
+  timeout.tv_usec = usecs;
+  fd_set set;
+  FD_ZERO(&set);
+  FD_SET(fd, &set);
+  int numready = select(fd+1, &set, NULL, NULL, &timeout); 
+
+  if(FD_ISSET(fd, &set)) {
+    struct sockaddr_in client_addr;
+    socklen_t size = sizeof(client_addr);
+    int conn_fd = accept(fd, (struct sockaddr *)&client_addr, &size);
+    return conn_fd;
+  }
+  return -1;
+}
+  
 // int do_open (int fd) {
 //   return 0;
 // }
