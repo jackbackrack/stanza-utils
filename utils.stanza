@@ -23,6 +23,8 @@ public defn to-stanza (any:Token) -> ? :
 
 ;;; GENERAL
 
+public defn sqr (x:Float) -> Float : x * x
+
 public defn to-int (x:True|False) : 1 when x else 0
 
 public defn println-depth (d:Int, s) :
