@@ -88,47 +88,48 @@ public defn get-line (s:BufferedSocket) -> String :
   get-chars-while(s, { _ != '\n' })
 
 extern socket_client: (ptr<byte>, int) -> int
-extern socket_server: (int, ptr<((int) -> int)>, ptr<((int, ptr<byte>) -> int)>, ptr<((int) -> int)>) -> int
 
-defn default-open-callback (s:Socket) -> False: false
-
-var *open-callback*:((Socket) -> False) = default-open-callback
-
-extern defn do_open_callback (fd:int) -> int :
-  val s = new Socket{fd}
-  [*open-callback*](s)
-  return 0
-
-lostanza defn set-open-callback (f:ref<((Socket) -> False)>) -> ref<False> :
-  *open-callback* = f
-  return false
-
-defn default-read-callback (s:Socket, buf:String) -> False: false
-
-var *read-callback*:((Socket, String) -> False) = default-read-callback
-
-extern defn do_read_callback (fd:int, buf:ptr<byte>) -> int :
-  val s = new Socket{fd}
-  val b = String(buf)
-  [*read-callback*](s, b)
-  return 0
-
-lostanza defn set-read-callback (f:ref<((Socket, String) -> False)>) -> ref<False> :
-  *read-callback* = f
-  return false
-
-defn default-close-callback (s:Socket) -> False: false
-
-var *close-callback*:((Socket) -> False) = default-close-callback
-
-extern defn do_close_callback (fd:int) -> int :
-  val s = new Socket{fd}
-  [*close-callback*](s)
-  return 0
-
-lostanza defn set-close-callback (f:ref<((Socket) -> False)>) -> ref<False> :
-  *close-callback* = f
-  return false
+;; extern socket_server: (int, ptr<((int) -> int)>, ptr<((int, ptr<byte>) -> int)>, ptr<((int) -> int)>) -> int
+;; 
+;; defn default-open-callback (s:Socket) -> False: false
+;; 
+;; var *open-callback*:((Socket) -> False) = default-open-callback
+;; 
+;; extern defn do_open_callback (fd:int) -> int :
+;;   val s = new Socket{fd}
+;;   [*open-callback*](s)
+;;   return 0
+;; 
+;; lostanza defn set-open-callback (f:ref<((Socket) -> False)>) -> ref<False> :
+;;   *open-callback* = f
+;;   return false
+;; 
+;; defn default-read-callback (s:Socket, buf:String) -> False: false
+;; 
+;; var *read-callback*:((Socket, String) -> False) = default-read-callback
+;; 
+;; extern defn do_read_callback (fd:int, buf:ptr<byte>) -> int :
+;;   val s = new Socket{fd}
+;;   val b = String(buf)
+;;   [*read-callback*](s, b)
+;;   return 0
+;; 
+;; lostanza defn set-read-callback (f:ref<((Socket, String) -> False)>) -> ref<False> :
+;;   *read-callback* = f
+;;   return false
+;; 
+;; defn default-close-callback (s:Socket) -> False: false
+;; 
+;; var *close-callback*:((Socket) -> False) = default-close-callback
+;; 
+;; extern defn do_close_callback (fd:int) -> int :
+;;   val s = new Socket{fd}
+;;   [*close-callback*](s)
+;;   return 0
+;; 
+;; lostanza defn set-close-callback (f:ref<((Socket) -> False)>) -> ref<False> :
+;;   *close-callback* = f
+;;   return false
 
 public defstruct SocketOpenException <: IOException :
    hostname: String
@@ -155,17 +156,17 @@ public defn NullClient () :
     defmethod get-char (this) : false
     defmethod print (this, c:Char) : false
 
-public lostanza defn Server
-    (port:ref<Int>,
-     open-callback:ref<((Socket) -> False)>,
-     read-callback:ref<((Socket, String) -> False)>,
-     close-callback:ref<((Socket) -> False)>) -> ref<False> :
-  set-open-callback(open-callback)
-  set-read-callback(read-callback)
-  set-close-callback(close-callback)
-  val fd = call-c socket_server(port.value, addr(do_open_callback), addr(do_read_callback), addr(do_close_callback))
-  if fd < 0 : throw(SocketOpenException(String("localhost"), port, linux-error-msg()))
-  return false
+;; public lostanza defn Server
+;;     (port:ref<Int>,
+;;      open-callback:ref<((Socket) -> False)>,
+;;      read-callback:ref<((Socket, String) -> False)>,
+;;      close-callback:ref<((Socket) -> False)>) -> ref<False> :
+;;   set-open-callback(open-callback)
+;;   set-read-callback(read-callback)
+;;   set-close-callback(close-callback)
+;;   val fd = call-c socket_server(port.value, addr(do_open_callback), addr(do_read_callback), addr(do_close_callback))
+;;   if fd < 0 : throw(SocketOpenException(String("localhost"), port, linux-error-msg()))
+;;   return false
 
 public lostanza deftype Server :
   fd : int
