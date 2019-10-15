@@ -16,6 +16,7 @@ extern free: (ptr<byte>) -> int
 protected extern strerror: (int) -> ptr<byte>
 protected extern get_errno: () -> int
 extern socket_poll: (int) -> int
+extern is_socket_closed: (int) -> int
 extern server_socket_poll: (int, int, int) -> int
 extern server_socket_open: (int) -> int
 extern printf: (ptr<byte>, ? ...) -> int
@@ -25,6 +26,10 @@ public lostanza defn Socket (fd:ref<Int>) -> ref<Socket> :
 
 public lostanza defn poll (s:ref<Socket>) -> ref<True|False> :
   val res = call-c socket_poll(s.fd)
+  if res == 0: return false else: return true
+
+public lostanza defn closed? (s:ref<Socket>) -> ref<True|False> :
+  val res = call-c is_socket_closed(s.fd)
   if res == 0: return false else: return true
 
 public lostanza defn recv-into (s:ref<Socket>, buf:ref<CharArray>, i:ref<Int>) -> ref<Int> :

@@ -59,6 +59,12 @@ int socket_poll(int fd) {
   return select(fd + 1, &fdset, NULL, NULL, &timeout) > 0;
 }
 
+int is_socket_closed(int fd) {
+  char c;
+  ssize_t x = recv(fd, &c, 1, MSG_PEEK);
+  return x <= 0;
+}
+
 int socket_server(int portno, fd_open_callback_t do_open, fd_read_callback_t do_read, fd_close_callback_t do_close) {
   int listen_desc, conn_desc;
   int maxfd, maxi;
