@@ -156,12 +156,14 @@ public lostanza defn ClientFileDescriptor (hostname:ref<String>, port:ref<Int>) 
 public lostanza defn Client (hostname:ref<String>, port:ref<Int>) -> ref<BufferedSocket> :
   return BufferedSocket(ClientFileDescriptor(hostname, port))
 
-lostanza var client-fd:int
+extern repl_client_fd:int
 
 public lostanza defn ReplClient (hostname:ref<String>, port:ref<Int>) -> ref<BufferedSocket> :
-  if client-fd == 0 :
-    client-fd = ClientFileDescriptor(hostname, port).value
-  return BufferedSocket(new Int{client-fd})
+  call-c printf("CLIENT-FD %d\n", repl_client_fd)
+  if repl_client_fd == 0 :
+    repl_client_fd = ClientFileDescriptor(hostname, port).value
+    call-c printf("CREATING NEW CLIENT-FD %d\n", repl_client_fd)
+  return BufferedSocket(new Int{repl_client_fd})
 
 public deftype NullClient <: MyBufferedInputStream & OutputStream
 public defn NullClient () :

@@ -212,3 +212,5 @@ int server_socket_poll (int fd, int secs, int usecs) {
 // int main (int argc, char* argv[]) {
 //   server(atoi(argv[1]), &do_open, &do_read, &do_close);
 // }
+
+int repl_client_fd = 0;
