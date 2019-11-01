@@ -148,10 +148,20 @@ lostanza defn linux-error-msg () -> ref<String> :
    val s = call-c strerror(call-c get_errno())
    return String(s)
 
-public lostanza defn Client (hostname:ref<String>, port:ref<Int>) -> ref<BufferedSocket> :
+public lostanza defn ClientFileDescriptor (hostname:ref<String>, port:ref<Int>) -> ref<Int> :
   val fd = call-c socket_client(addr!(hostname.chars), port.value)
   if fd < 0 : throw(SocketOpenException(hostname, port, linux-error-msg()))
-  return BufferedSocket(new Int{fd})
+  return new Int{fd}
+
+public lostanza defn Client (hostname:ref<String>, port:ref<Int>) -> ref<BufferedSocket> :
+  return BufferedSocket(ClientFileDescriptor(hostname, port))
+
+lostanza var client-fd:int
+
+public lostanza defn ReplClient (hostname:ref<String>, port:ref<Int>) -> ref<BufferedSocket> :
+  if client-fd == 0 :
+    client-fd = ClientFileDescriptor(hostname, port).value
+  return BufferedSocket(new Int{client-fd})
 
 public deftype NullClient <: MyBufferedInputStream & OutputStream
 public defn NullClient () :
