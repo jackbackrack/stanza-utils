@@ -1,0 +1,261 @@
+defpackage full-priority-heap :
+  import core
+  import math
+
+;;; FULL BINARY TREE BASE PRIORITY HEAP WITH O(LOG LOG N) COMPLEXITY
+;;; USES FULL TREE IN ARRAY WITH BUCKET LIST FOR NON-EMPTY LEAVES
+;;; FROM PAPER D JOHNSON --
+;;;   A PRIORITY QUEUE IN WHICH INITIALIZE AND QUEUE OPERATIONS TAKE O(LOG LOG D) TIME
+
+public defstruct Node :
+  idx : Int ;; KEY
+  full? : True|False with: (init => false, setter => set-full?)
+  leaf? : True|False 
+  value : Float      with: (init => -1.0f, setter => set-value)
+  ;; BUCKET LIST POINTERS
+  prev :  False|Node with: (init => false, setter => set-prev)
+  next :  False|Node with: (init => false, setter => set-next)
+
+public defn prev! (n:Node) : prev(n) as Node
+public defn next! (n:Node) : next(n) as Node
+
+defmethod print (s:OutputStream, n:Node) :
+  print(s, "Node(%_%_)" % [idx(n), string-join([" " value(n)]) when full?(n) else ""])
+
+defn init (n:Node) :
+  set-prev(n, false)
+  set-next(n, false)
+  set-full?(n, false)
+  set-value(n, 0.0f)
+
+defn next-power-of-two (n:Int) -> [Int, Int] :
+  let loop (k:Int = 0) :
+    val p2 = 1 << k
+    [p2, k] when p2 >= n else loop(k + 1)
+
+defn tot-nodes (l:Int) -> Int :
+  2 * l - 1
+
+defn num-internal-nodes (l:Int) -> Int :
+  tot-nodes(l) - l
+
+public defstruct Heap :
+  num-leaves : Int
+  pow2 : Int
+  first : Node ;; FIRST SENTINEL BUCKET
+  last : Node  ;; LAST SENTINEL BUCKET
+  nodes : Array<Node>
+with:
+  constructor => #Heap
+
+public defn leaves (t:Heap) -> Seqable<Node> :
+  nodes(t)[num-internal-nodes(num-leaves(t)) to false]
+
+public defn buckets (t:Heap) -> Seqable<Node> :
+  generate<Node> :
+    let loop (n:Node = first(t)) :
+      yield(n)
+      match(next(n)) :
+        (nxt:Node) : loop(nxt)
+        (f:False) :  false
+
+defmethod print (s:OutputStream, t:Heap) :
+  print(s, "Heap(%_, %_, %_)" % [num-leaves(t), nodes(t), to-tuple $ buckets(t)])
+
+public defn dump (t:Heap) :
+  var j:Int = 1
+  for i in 0 through pow2(t) do :
+    for n in nodes(t)[((1 << i) - 1) to ((1 << (i + 1)) - 1)] do :
+      print("%_:%_ " % [j, n])
+      j = j + 1
+    println("")
+  println(to-tuple $ buckets(t))
+
+defn parent-idx (i:Int) -> Int :
+  i >> 1
+
+defn leaf-index (t:Heap, k:Int) -> Int :
+  num-internal-nodes(num-leaves(t)) + k 
+  
+defn left-child-index (i:Int) -> Int :
+  i << 1
+
+defn right-child-index (i:Int) -> Int :
+  (i << 1) + 1
+
+defn left-sibling-index (i:Int) -> Int :
+  (i >> 1) << 1
+
+defn right-sibling-index (i:Int) -> Int :
+  i | 1
+
+defn left-child-index? (i:Int) -> True|False :
+  (i & 1) == 0
+
+defn right-child-index? (i:Int) -> True|False :
+  (i & 1) == 1
+
+defn node-of (t:Heap, i:Int) -> Node :
+  nodes(t)[i - 1]
+
+defn set-node-of (t:Heap, i:Int, n:Node) :
+  nodes(t)[i - 1] = n
+
+public defn null? (n:Node) -> True|False :
+  not full?(n)
+
+defn has-no-children? (t:Heap, i:Int) -> True|False :
+  null?(node-of(t, left-child-index(i))) and null?(node-of(t, right-child-index(i)))
+
+public defn Heap (n:Int) :
+  val [num-leaves, pow2] = next-power-of-two(n)
+  val nodes = Array<Node>(tot-nodes(num-leaves))
+  for i in 0 to num-internal-nodes(num-leaves) do :
+    nodes[i] = Node(i, false)
+  for (k in num-internal-nodes(num-leaves) to tot-nodes(num-leaves), i in 1 to false) do :
+    nodes[k] = Node(i, true)
+  val first = Node(0, true)
+  val last = Node(num-leaves + 1, true)
+  set-next(first, last)
+  set-prev(last, first)
+  #Heap(num-leaves, pow2, first, last, nodes)
+
+defn right-most-node (t:Heap, s:Int) -> Node :
+  val n = node-of(t, s)
+  if leaf?(n) and full?(n) :
+    n
+  else :    
+    let loop (i:Int = s) :
+      val rc-node = node-of(t, right-child-index(i))
+      if leaf?(rc-node) : 
+        if full?(rc-node) :
+          rc-node
+        else :
+          val lc-node = node-of(t, left-child-index(i))
+          if full?(lc-node) :
+            lc-node
+          else :
+            last(t)
+      else :
+        loop(right-child-index(i) when full?(rc-node) else left-child-index(i))
+
+defn pred (t:Heap, k:Int) -> Node :
+  val idx = leaf-index(t, k)
+  let loop (i:Int = idx) :
+    if i <= 1 :
+      first(t)
+    else :
+      if left-child-index?(i) or null?(node-of(t, left-sibling-index(i))) :
+        loop(parent-idx(i))
+      else :
+        right-most-node(t, left-sibling-index(i))        
+
+;; defn left-most-node (t:Heap, s:Int) -> Node :
+;;   val n = node-of(t, s)
+;;   if leaf?(n) and full?(n) :
+;;     n
+;;   else :    
+;;     let loop (i:Int = s) :
+;;       val lc-node = node-of(t, left-child-index(i))
+;;       if leaf?(lc-node) :
+;;           if full?(lc-node) :
+;;             lc-node
+;;           else :
+;;             val rc-node = node-of(t, right-child-index(i))
+;;             if full?(rc-node) :
+;;               rc-node
+;;             else :
+;;               first(t)
+;;       else :
+;;         loop(left-child-index(i) when full?(lc-node) else right-child-index(i))
+;; 
+;; defn succ (t:Heap, k:Int) -> Node :
+;;   val idx = leaf-index(t, k)
+;;   let loop (i:Int = idx) :
+;;     if i <= 1 :
+;;       last(t)
+;;     else :
+;;       if right-child-index?(i) or null?(node-of(t, right-sibling-index(i))) :
+;;         loop(parent-idx(i))
+;;       else :
+;;         left-most-node(t, right-sibling-index(i))        
+
+public defn leaf (t:Heap, k:Int) -> Node :
+  node-of(t, leaf-index(t, k))
+
+public defn insert (t:Heap, k:Int, v:Float) -> Node :
+  val idx = leaf-index(t, k)
+  val node = node-of(t, idx)
+  if not full?(node) :
+    ;; link into tree by setting full bits for empty parents
+    let loop (i:Int = parent-idx(idx)) :
+      val node = node-of(t, i)
+      if not full?(node) :
+        set-full?(node, true)
+        loop(parent-idx(i)) when i > 1
+    ;; link into bucket list
+    val prev = pred(t, k)  
+    val next = next(prev) as Node
+    set-full?(node, true)
+    set-prev(node, prev)
+    set-next(prev, node)
+    set-next(node, next)
+    set-prev(next, node)
+  set-value(node, v)
+  node
+
+public defn delete (t:Heap, k:Int) -> Node :
+  val idx  = leaf-index(t, k)
+  val node = node-of(t, idx)
+  if full?(node) :
+    ;; unlink from bucket list
+    set-next(prev!(node), next(node))
+    set-prev(next!(node), prev(node))
+    set-next(node, false)
+    set-prev(node, false)
+    set-full?(node, false)
+    set-value(node, -1.0f)
+    ;; clear out full bits for parents with no children
+    let loop (i:Int = parent-idx(idx)) :
+      if i >= 1 and has-no-children?(t, i) :
+        set-full?(node-of(t, i), false)
+        loop(parent-idx(i))
+  node
+        
+public defn check-buckets (t:Heap) :
+  for b in buckets(t) do :
+    if null?(b) and not contains?(seq(idx, [first(t), last(t)]), idx(b)) :
+      println("!!! NULL BUCKET %_" % [b])
+  for n in leaves(t) do :
+    if not null?(n) and not contains?(seq(idx, buckets(t)), idx(n)) :
+      println("!!! UNABLE TO FIND NON-NULL LEAF IN BUCKETS %_" % [n])
+
+public defn init (t:Heap) :
+  for i in 0 to num-internal-nodes(num-leaves(t)) do :
+    set-full?(nodes(t)[i], false)
+  for k in num-internal-nodes(num-leaves(t)) to tot-nodes(num-leaves(t)) do :
+    init(nodes(t)[k])
+  set-next(first(t), last(t))
+  set-prev(last(t), first(t))
+
+;; defn main () :
+;;   val n = 1 << 13
+;;   val t = Heap(n)
+;;   for i in 0 to (n * n) do :
+;;     val k = rand(1 through n)
+;;   ;; val keys = [6 7 5]
+;;   ;; for k in keys do :
+;;     if null?(leaf(t, k)) :
+;;       insert(t, k, to-float(k))
+;;       ;; dump(t)
+;;       ;; if not contains?(seq(idx, buckets(t)), k) :
+;;       ;;   println("!!! UNABLE TO FIND KEY %_" % [k])
+;;     else :
+;;       delete(t, k)
+;;       ;; dump(t)
+;;       ;; if contains?(seq(idx, buckets(t)), k) :
+;;       ;;   println("!!! FOUND KEY %_" % [k])
+;;     ;; check-buckets(t)
+;; 
+;; main()
+;; 

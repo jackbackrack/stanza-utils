@@ -51,3 +51,4 @@ defregistry stanza-utils :
   file "bst.stanza"
   file "repl-eval.stanza"
   file "runtime.stanza"
+  file "full-priority-heap.stanza"
