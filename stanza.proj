@@ -1,0 +1,7 @@
+package socket defined-in "socket.stanza"
+package socket requires :
+  ccfiles: "socket.c"
+package time defined-in "time.stanza"
+package time requires :
+  ccfiles: "time.c"
+package utils defined-in "utils.stanza"
