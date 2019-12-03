@@ -3,10 +3,10 @@ package time requires :
   ccfiles: "time.c"
 package efsw defined-in "efsw.stanza"
 package efsw requires :
-  ccfiles: "{GEN}/efsw.o"
+  ccfiles: "{WORKDIR}/build/efsw.o"
   ccflags: "-efsw"
-compile file "{GEN}/efsw.o" from "efsw.cpp" :
-  "g++ {.}/efsw.cpp -c -o {GEN}/efsw.o"
+compile file "{WORKDIR}/build/efsw.o" from "efsw.cpp" :
+  "g++ {.}/efsw.cpp -c -o {WORKDIR}/build/efsw.o"
 package socket defined-in "socket.stanza"
 package socket requires :
   ccfiles: "socket.c"
