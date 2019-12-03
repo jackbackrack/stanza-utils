@@ -1,7 +1,25 @@
-package socket defined-in "socket.stanza"
-package socket requires :
-  ccfiles: "socket.c"
 package time defined-in "time.stanza"
 package time requires :
   ccfiles: "time.c"
+package efsw defined-in "efsw.stanza"
+package efsw requires :
+  ccfiles: "{GEN}/efsw.o"
+  ccflags: "-efsw"
+compile file "{GEN}/efsw.o" from "efsw.cpp" :
+  "g++ {.}/efsw.cpp -c -o {GEN}/efsw.o"
+package socket defined-in "socket.stanza"
+package socket requires :
+  ccfiles: "socket.c"
+package process defined-in "process.stanza"
+package process requires :
+  ccfiles: "process.c"
+package file-system defined-in "file-system.stanza"
+package file-system requires :
+  ccfiles: "file-system.c"
 package utils defined-in "utils.stanza"
+package union-find defined-in "union-find.stanza"
+package heap defined-in "heap.stanza"
+package edts defined-in "edits.stanza"
+package repl-eval defined-in "repl-eval.stanza"
+package runtime defined-in "runtime.stanza"
+package full-priority-heap defined-in "full-priority-heap.stanza"
