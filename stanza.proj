@@ -19,7 +19,7 @@ package file-system requires :
 package utils defined-in "utils.stanza"
 package union-find defined-in "union-find.stanza"
 package heap defined-in "heap.stanza"
-package edts defined-in "edits.stanza"
+package edits defined-in "edits.stanza"
 package repl-eval defined-in "repl-eval.stanza"
 package runtime defined-in "runtime.stanza"
 package full-priority-heap defined-in "full-priority-heap.stanza"
