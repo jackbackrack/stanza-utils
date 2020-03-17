@@ -179,6 +179,11 @@ public lostanza defn ReplClient (hostname:ref<String>, port:ref<Int>) -> ref<Buf
     repl_client_fd = ClientFileDescriptor(hostname, port).value
   return BufferedSocket(new Int{repl_client_fd})
 
+public lostanza defn ReplClient (filename:ref<String>) -> ref<BufferedSocket> :
+  if repl_client_fd == 0 :
+    repl_client_fd = ClientFileDescriptor(filename).value
+  return BufferedSocket(new Int{repl_client_fd})
+
 public deftype NullClient <: MyBufferedInputStream & OutputStream
 public defn NullClient () :
   new NullClient :
