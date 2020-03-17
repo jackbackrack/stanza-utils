@@ -49,6 +49,24 @@ int socket_client (char* hostname, int portno) {
   return sockfd;
 }
 
+int socket_client_from_filename (char* filename) {
+  int sockfd, n;
+  struct sockaddr_un server;
+
+  // printf("HOSTNAME %s PORTNO %d\n", hostname, portno);
+  
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd < 0) 
+    return sockfd;
+  server.sun_family = AF_UNIX;
+  strcpy(server.sun_path, filename);
+  if (connect(sockfd,(struct sockaddr *) &server,sizeof(servaddr_un)) < 0) {
+    close(sockfd);
+    return -1;
+  }
+  return sockfd;
+}
+
 int socket_poll(int fd) {
   struct timeval timeout;
   timeout.tv_sec = 0;
