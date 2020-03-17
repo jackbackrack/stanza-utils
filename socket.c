@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <netdb.h> 
 
@@ -60,7 +61,7 @@ int socket_client_from_filename (char* filename) {
     return sockfd;
   server.sun_family = AF_UNIX;
   strcpy(server.sun_path, filename);
-  if (connect(sockfd,(struct sockaddr *) &server,sizeof(servaddr_un)) < 0) {
+  if (connect(sockfd,(struct sockaddr *) &server,sizeof(server)) < 0) {
     close(sockfd);
     return -1;
   }
