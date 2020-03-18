@@ -182,8 +182,6 @@ public lostanza defn ReplClient (hostname:ref<String>, port:ref<Int>) -> ref<Buf
 public lostanza defn ReplClient (filename:ref<String>) -> ref<BufferedSocket> :
   ; if repl_client_fd == 0 :
   ;   repl_client_fd = ClientFileDescriptor(filename).value
-  ; if repl_client_fd == 0 :
-  ;   repl_client_fd = ClientFileDescriptor(filename).value
   ; return BufferedSocket(new Int{repl_client_fd})
   val fd = ClientFileDescriptor(filename).value
   return BufferedSocket(new Int{fd})
