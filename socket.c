@@ -45,27 +45,29 @@ int socket_client (char* hostname, int portno) {
         (char *)&serv_addr.sin_addr.s_addr,
         server->h_length);
   serv_addr.sin_port = htons(portno);
-  if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
-    return -1;
-  return sockfd;
-}
-
-int socket_client_from_filename (char* filename) {
-  int sockfd, n;
-  struct sockaddr_un server;
-
-  // printf("HOSTNAME %s PORTNO %d\n", hostname, portno);
-  
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sockfd < 0) 
-    return sockfd;
-  server.sun_family = AF_UNIX;
-  strcpy(server.sun_path, filename);
-  if (connect(sockfd,(struct sockaddr *) &server,sizeof(server)) < 0) {
+  if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
     close(sockfd);
     return -1;
   }
   return sockfd;
+}
+
+int socket_client_from_filename (char* filename) {
+    int sock;
+    struct sockaddr_un server;
+    sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("opening stream socket");
+        exit(1);
+    }
+    server.sun_family = AF_UNIX;
+    strcpy(server.sun_path, filename);
+
+    if (connect(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un)) < 0) {
+        close(sock);
+        return -1;
+    }
+    return sock;
 }
 
 int socket_poll(int fd) {

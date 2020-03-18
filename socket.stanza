@@ -150,7 +150,7 @@ public defstruct SocketOpenFilenameException <: IOException :
    cause: String
 
 defmethod print (o:OutputStream, e:SocketOpenFilenameException) :
-   print(o, "Error occurred when attempting to open socket %_ %_. %_." % [filename(e), cause(e)])
+   print(o, "Error occurred when attempting to open socket %_ %_." % [filename(e), cause(e)])
 
 lostanza defn linux-error-msg () -> ref<String> :
    val s = call-c strerror(call-c get_errno())
@@ -180,9 +180,13 @@ public lostanza defn ReplClient (hostname:ref<String>, port:ref<Int>) -> ref<Buf
   return BufferedSocket(new Int{repl_client_fd})
 
 public lostanza defn ReplClient (filename:ref<String>) -> ref<BufferedSocket> :
-  if repl_client_fd == 0 :
-    repl_client_fd = ClientFileDescriptor(filename).value
-  return BufferedSocket(new Int{repl_client_fd})
+  ; if repl_client_fd == 0 :
+  ;   repl_client_fd = ClientFileDescriptor(filename).value
+  ; if repl_client_fd == 0 :
+  ;   repl_client_fd = ClientFileDescriptor(filename).value
+  ; return BufferedSocket(new Int{repl_client_fd})
+  val fd = ClientFileDescriptor(filename).value
+  return BufferedSocket(new Int{fd})
 
 public deftype NullClient <: MyBufferedInputStream & OutputStream
 public defn NullClient () :
