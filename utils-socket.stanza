@@ -93,6 +93,7 @@ public defn get-line (s:BufferedSocket) -> String :
   get-chars-while(s, { _ != '\n' })
 
 extern socket_client: (ptr<byte>, int) -> int
+extern socket_client_from_filename: (ptr<byte>) -> int
 
 ;; extern socket_server: (int, ptr<((int) -> int)>, ptr<((int, ptr<byte>) -> int)>, ptr<((int) -> int)>) -> int
 ;; 
@@ -144,6 +145,13 @@ public defstruct SocketOpenException <: IOException :
 defmethod print (o:OutputStream, e:SocketOpenException) :
    print(o, "Error occurred when attempting to open socket %_ %_. %_." % [hostname(e), portno(e), cause(e)])
 
+public defstruct SocketOpenFilenameException <: IOException :
+   filename: String
+   cause: String
+
+defmethod print (o:OutputStream, e:SocketOpenFilenameException) :
+   print(o, "Error occurred when attempting to open socket %_ %_." % [filename(e), cause(e)])
+
 lostanza defn linux-error-msg () -> ref<String> :
    val s = call-c strerror(call-c get_errno())
    return String(s)
@@ -151,6 +159,14 @@ lostanza defn linux-error-msg () -> ref<String> :
 public lostanza defn ClientFileDescriptor (hostname:ref<String>, port:ref<Int>) -> ref<Int> :
   val fd = call-c socket_client(addr!(hostname.chars), port.value)
   if fd < 0 : throw(SocketOpenException(hostname, port, linux-error-msg()))
+  return new Int{fd}
+
+public lostanza defn Client (filename:ref<String>) -> ref<BufferedSocket> :
+  return BufferedSocket(ClientFileDescriptor(filename))
+
+public lostanza defn ClientFileDescriptor (filename:ref<String>) -> ref<Int> :
+  val fd = call-c socket_client_from_filename(addr!(filename.chars))
+  if fd < 0 : throw(SocketOpenFilenameException(filename, linux-error-msg()))
   return new Int{fd}
 
 public lostanza defn Client (hostname:ref<String>, port:ref<Int>) -> ref<BufferedSocket> :
@@ -162,6 +178,13 @@ public lostanza defn ReplClient (hostname:ref<String>, port:ref<Int>) -> ref<Buf
   if repl_client_fd == 0 :
     repl_client_fd = ClientFileDescriptor(hostname, port).value
   return BufferedSocket(new Int{repl_client_fd})
+
+public lostanza defn ReplClient (filename:ref<String>) -> ref<BufferedSocket> :
+  ; if repl_client_fd == 0 :
+  ;   repl_client_fd = ClientFileDescriptor(filename).value
+  ; return BufferedSocket(new Int{repl_client_fd})
+  val fd = ClientFileDescriptor(filename).value
+  return BufferedSocket(new Int{fd})
 
 public deftype NullClient <: MyBufferedInputStream & OutputStream
 public defn NullClient () :

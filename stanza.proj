@@ -1,10 +1,12 @@
 package utils/time defined-in "utils-time.stanza"
 package utils/time requires :
   ccfiles: "utils-time.c"
+;[strip]
 package utils/efsw defined-in "utils-efsw.stanza"
 package utils/efsw requires :
   ccfiles: "{WORKDIR}/build/utils-efsw.o"
   ccflags: "-efsw"
+;[/strip]
 compile file "{WORKDIR}/build/utils-efsw.o" from "utils-efsw.cpp" :
   "g++ {.}/utils-efsw.cpp -c -o {WORKDIR}/build/utils-efsw.o"
 package utils/socket defined-in "utils-socket.stanza"
@@ -22,8 +24,10 @@ package utils/heap defined-in "utils-heap.stanza"
 package utils/edits defined-in "utils-edits.stanza"
 package utils/repl-eval defined-in "utils-repl-eval.stanza"
 package utils/runtime defined-in "utils-runtime.stanza"
+;[strip]
 package utils/full-priority-heap defined-in "utils-full-priority-heap.stanza"
 package utils/bst defined-in "utils-bst.stanza"
+;[/strip]
 package utils/buffered-stream defined-in "utils-buffered-stream.stanza"
 package utils/char defined-in "utils-char.stanza"
 package utils/math defined-in "utils-math.stanza"
@@ -32,4 +36,3 @@ package utils/reader defined-in "utils-reader.stanza"
 package utils/rnd defined-in "utils-rnd.stanza"
 package utils/seqable defined-in "utils-seqable.stanza"
 package utils/string defined-in "utils-string.stanza"
-
