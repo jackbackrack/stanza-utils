@@ -1,6 +1,6 @@
 ;; See license.txt for details about licensing.
 
-defpackage file-system :
+defpackage utils/file-system :
   import core
   import collections
   import math

@@ -1,6 +1,6 @@
 ;; See license.txt for details about licensing.
 
-defpackage process :
+defpackage utils/process :
   import core
   import collections
   import utils

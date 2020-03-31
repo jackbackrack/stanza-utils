@@ -1,0 +1,127 @@
+defpackage utils/seqable :
+  import core
+  import collections
+
+public defn unique<?T,?S> (key:T -> ?S&Equalable&Hashable, xs:Seqable<?T>) -> Seq<T> :
+  val visited? = HashSet<S>()
+  generate<T> :
+    for e in xs do :
+      val k = key(e)
+      if not visited?[k] :
+        add(visited?, k)
+        yield(e)
+
+public defn successive-pairs<?T> (ielts:Seqable<?T>) -> Seq<[T, T]> :
+  val elts = to-seq(ielts)
+  var prev:T = next(elts)
+  for e in elts seq :
+    val res = [prev, e]
+    prev = e
+    res
+
+public defn successive-pairs-wrapped<?T> (ielts:Seqable<?T>) -> Seq<[T, T]> :
+  val elts = to-seq(ielts)
+  val first = next(elts)
+  successive-pairs $ cat-all $ [[first] elts [first]]
+
+public defn qsort-on<?T,?S> (key:T -> ?S&Comparable<S>, coll:Seqable<?T>) :
+  lazy-qsort(coll, compare{key(_), key(_)})
+
+;; public defn qsort<?T> (coll:Seqable<?T&Comparable<T>>) -> Collection<T> & Lengthable :
+;;   lazy-qsort(coll, compare)
+
+public defn matches (str:Seqable<Char>, pat:String) -> Seq<Int> :
+  val matches = Array<True|False>(length(pat) + 1)
+  val len = length(pat)
+  for i in 0 through len do :
+    matches[i] = i == 0
+  generate<Int> :
+    for (e in str, j in 0 to false) do :
+      for i in len to 0 by -1  do :
+        matches[i] = (e == pat[i - 1]) and matches[i - 1]
+      if matches[len] : yield(j)
+
+public defn mask (indices:Seqable<Int>) -> Seq<True|False> :
+  generate<True|False> :
+    var j = 0
+    for i in indices do :
+      while j <= i :
+        yield(i == j)
+        j = j + 1  
+
+public defn indices (mask:Seqable<True|False>) -> Seq<Int> :
+  generate<Int> :
+    for (e in mask, j in 0 to false) do :
+      if e : yield(j)
+
+public defn chunk<?T> (asrc:Seqable<?T>, amask:Seqable<True|False>) -> Seq<Seq<T>> :
+  val [src, mask] = [to-seq(asrc), to-seq(amask)]
+  generate<Seq<T>> :
+    while not empty?(src) :
+      val gen = generate<T> :
+        let loop () :
+          if not empty?(src) :
+            yield(next(src))
+            if empty?(mask) or next(mask) == false : loop()
+      yield(gen)
+
+
+public defn scan<?T,?S> (f: (T, S) -> ?T, x0: ?T, xs:Seqable<?S>) -> Seq<T> :
+   var accum = x0
+   for x in xs seq :
+      accum = f(accum, x)
+      accum
+
+;; TODO: PERHAPS GENERALIZE TO SEQ OF REDUCTIONS
+public defn cumsum (nums:Seqable<Float>) -> Seq<Float> :
+  var tot:Float = 0.0f
+  for n in nums seq : (tot = tot + n, tot)
+
+public defn reverse<?T> (s:Seq<?T>) -> Seq<T> :
+  val t = to-tuple $ s
+  for i in (length(t) - 1) through 0 by -1 seq : t[i]
+
+public defn next-or<?T> (s:Seq<?T>, default:T) -> T :
+  default when empty?(s) else next(s)
+
+public defn unzip<?S,?T> (z:Seqable<[?S,?T]>) -> [Vector<S>, Vector<T>] :
+  val s = Vector<S>()
+  val t = Vector<T>()
+  for [se, te] in z do :
+    add(s, se)
+    add(t, te)
+  [s, t]
+
+public defn to-array!<?T> (xs:Seqable<?T>) -> Array<T> :
+   match(xs) :
+      (xs:Seqable<T> & Lengthable) :
+         val n = length(xs)
+         val a = Array<T>(n)
+         for (x in xs, i in 0 to n) do :
+            a[i] = x
+         a
+      (xs) :
+         to-array!(to-list(xs))
+
+public defn set-all<?T> (v:Vector<?T>, elts:Seqable<T>) :
+  clear(v)
+  add-all(v, elts)
+
+public defn set-all<?T> (s:HashSet<?T>, elts:Seqable<T>) :
+  clear(s)
+  for e in elts do : add(s, e)
+
+public defn set<?T> (v:Vector<?T>, vs:Seqable<T>) -> False :
+  clear(v)
+  add-all(v, vs)
+
+public defn set (v:StringBuffer, vs:Seqable<Char>) -> False :
+  clear(v)
+  add-all(v, vs)
+
+public defn last<?T> (s:IndexedCollection<?T>&Lengthable) -> T :
+  s[length(s) - 1]
+
+public defn last<?T> (s:Tuple<?T>) -> T :
+  s[length(s) - 1]
+

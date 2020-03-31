@@ -1,0 +1,54 @@
+defpackage utils/rnd :
+  import core
+  import math
+
+public defn rndi (lo:Int, hi:Int) -> Int :
+  (rand() % (hi - lo + 1)) + lo
+
+public defn rnd (lo:Int, hi:Int): rndi(lo, hi)
+
+public defn rndf () -> Float :
+  val n = 1000000
+  to-float(rand() % n) / to-float(n)
+
+public defn rndf (lo:Float, hi:Float) -> Float :
+  val r = rndf()
+  val d = hi - lo
+  lo + (r * d)
+
+public defn rnd (lo:Float, hi:Float): rndf(lo, hi)
+
+public defn rndd () -> Double :
+  val n = 1000000
+  to-double(rand() % n) / to-double(n)
+
+public defn rndd (lo:Double, hi:Double) -> Double :
+  val r = rndd()
+  val d = hi - lo
+  lo + (r * d)
+
+public defn rnd (lo:Double, hi:Double): rndd(lo, hi)
+
+public defn rnd<?T> (elts:IndexedCollection<?T>&Lengthable) -> T :
+  elts[rndi(0, length(elts) - 1)]
+
+public defn rnd<?T> (elts:Tuple<?T>) -> T :
+  elts[rndi(0, length(elts) - 1)]
+
+public defn rnd-indices (len:Int) -> Array<Int> :
+  val indices = Array<Int>(len)
+  for i in 0 to len do : indices[i] = i
+  for i in 0 to len do :
+    val j = rnd(0, len - 1)
+    val k = rnd(0, len - 1)
+    val t = indices[k]
+    indices[k] = indices[j]
+    indices[j] = t
+  indices
+
+public defn rnd-order<?T> (elts:IndexedCollection<?T>&Lengthable) -> Seq<T> :
+  for i in rnd-indices(length(elts)) seq : elts[i]
+
+public defn rnd-order<?T> (elts:Tuple<?T>) -> Seq<T> :
+  for i in rnd-indices(length(elts)) seq : elts[i]
+

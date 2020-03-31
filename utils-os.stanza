@@ -1,0 +1,26 @@
+defpackage utils/os :
+  import core
+
+public defn stream (s:FileInputStream) :
+  generate<Char> :
+    let loop () :
+      match(get-char(s)) :
+        (c:Char) :
+          yield(c)
+          loop()
+        (c:False) : false
+    close(s)
+
+;; TODO: SHOULD BE MERGED BACK IN
+public defn slurp (s:FileInputStream) :
+  String(stream(s))
+
+extern usleep: (int) -> int
+
+public lostanza defn usleep (t:ref<Int>) -> ref<False> :
+  call-c usleep(t.value)
+  return false
+
+public defn sleep (t:Float) -> False :
+  usleep(to-int $ (t * 1.0e6f))
+

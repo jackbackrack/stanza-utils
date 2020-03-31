@@ -1,6 +1,6 @@
 ;; See license.txt for details about licensing.
 
-defpackage union-find :
+defpackage utils/union-find :
   import core
   import collections
 

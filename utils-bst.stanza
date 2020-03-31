@@ -1,4 +1,4 @@
-defpackage bst :
+defpackage utils/bst :
   import core
   import collections
   import utils

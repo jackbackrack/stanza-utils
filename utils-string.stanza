@@ -1,0 +1,63 @@
+defpackage utils/string :
+  import core
+
+public defn hex-to-int (s: String) -> Int :
+  var res = 0
+  for i in 2 to length(s) do :
+    val dig = index-of("0123456789ABCDEF", s[i]) as Int
+    res = res * 16 + dig
+  res
+
+;;; CHARACTERS
+
+public defn trim (s:String, ok?:(Char) -> True|False) -> String :
+   match(index-when(ok?, s)) :
+      (i:Int) :
+         val n = length(s)
+         val j = for i in (n - 1) through 0 by -1 find! :
+            ok?(s[i])
+         s[i through j]   
+      (i:False) : ""
+
+defn split-any* (str:IndexedCollection<Char>, any:String, range:Seq<Int>) -> Seq<KeyValue<Int, String>> :
+  generate<KeyValue<Int, String>> :
+    val beg = next(range)
+    let loop (start = beg, i = beg) :
+      if empty?(range) :
+        if contains?(any, str[i]) :
+          yield(start => (to-string $ str[start to i]))
+          yield(i => (to-string $ str[i through i]))
+          loop(i + 1, i + 1)
+        else :
+          loop(start, i + 1)
+      else if i != start :
+        yield(start => (to-string $ str[start to false]))
+
+public defn split-any (str:IndexedCollection<Char>, any:String) -> Seq<KeyValue<Int, String>> :
+  generate<KeyValue<Int, String>> :
+    let loop (start = 0, i = 0) :
+      if i < length(str) :
+        if contains?(any, str[i]) :
+          yield(start => (to-string $ str[start to i]))
+          yield(i => (to-string $ str[i through i]))
+          loop(i + 1, i + 1)
+        else :
+          loop(start, i + 1)
+      else if start < length(str) :
+        yield(start => (to-string $ str[start to false]))
+
+public defn split* (str:String, s:String) -> Seq<String> :
+  generate<String> :
+    val strl = length(str)
+    val sl = length(s)
+    let loop (b = 0) :
+      if b < strl :
+        match(index-of-chars(str, b to false, s)) :
+          (i:Int) :
+            yield(str[b to i])
+            loop(i + sl)
+          (i:False) :
+            yield(str[b to false])
+      else if b > 0 :
+        yield("")
+

@@ -1,0 +1,19 @@
+defpackage utils/reader :
+  import core
+  import reader
+
+public defn to-stanza (any:Token) -> ? :
+  match(item(any)) :
+    (x:Int|Float|Double|String) :
+      x
+    (x:List) :
+      if empty?(x) :
+        x
+      else :
+        match(head(x)) :
+          (s:Symbol) :
+            switch(s) :
+              `@tuple : to-tuple(map(to-stanza, tail(x)))
+              else : map(to-stanza, x)
+          (o) : map(to-stanza, x)
+

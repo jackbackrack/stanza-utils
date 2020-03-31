@@ -1,6 +1,6 @@
 ;; See license.txt for details about licensing.
 
-defpackage efsw :
+defpackage utils/efsw :
   import core
 
 lostanza deftype Watcher :

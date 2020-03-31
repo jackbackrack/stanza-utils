@@ -1,26 +1,35 @@
-package time defined-in "time.stanza"
-package time requires :
-  ccfiles: "time.c"
-package efsw defined-in "efsw.stanza"
-package efsw requires :
-  ccfiles: "{WORKDIR}/build/efsw.o"
+package utils/time defined-in "utils-time.stanza"
+package utils/time requires :
+  ccfiles: "utils-time.c"
+package utils/efsw defined-in "utils-efsw.stanza"
+package utils/efsw requires :
+  ccfiles: "{WORKDIR}/build/utils-efsw.o"
   ccflags: "-efsw"
-compile file "{WORKDIR}/build/efsw.o" from "efsw.cpp" :
-  "g++ {.}/efsw.cpp -c -o {WORKDIR}/build/efsw.o"
-package socket defined-in "socket.stanza"
-package socket requires :
-  ccfiles: "socket.c"
-package process defined-in "process.stanza"
-package process requires :
-  ccfiles: "process.c"
-package file-system defined-in "file-system.stanza"
-package file-system requires :
-  ccfiles: "file-system.c"
-package utils defined-in "utils.stanza"
-package union-find defined-in "union-find.stanza"
-package heap defined-in "heap.stanza"
-package edits defined-in "edits.stanza"
-package repl-eval defined-in "repl-eval.stanza"
-package runtime defined-in "runtime.stanza"
-package full-priority-heap defined-in "full-priority-heap.stanza"
-package bst defined-in "bst.stanza"
+compile file "{WORKDIR}/build/utils-efsw.o" from "utils-efsw.cpp" :
+  "g++ {.}/utils-efsw.cpp -c -o {WORKDIR}/build/utils-efsw.o"
+package utils/socket defined-in "utils-socket.stanza"
+package utils/socket requires :
+  ccfiles: "utils-socket.c"
+package utils/process defined-in "utils-process.stanza"
+package utils/process requires :
+  ccfiles: "utils-process.c"
+package utils/file-system defined-in "utils-file-system.stanza"
+package utils/file-system requires :
+  ccfiles: "utils-file-system.c"
+package utils/basic defined-in "utils-basic.stanza"
+package utils/union-find defined-in "utils-union-find.stanza"
+package utils/heap defined-in "utils-heap.stanza"
+package utils/edits defined-in "utils-edits.stanza"
+package utils/repl-eval defined-in "utils-repl-eval.stanza"
+package utils/runtime defined-in "utils-runtime.stanza"
+package utils/full-priority-heap defined-in "utils-full-priority-heap.stanza"
+package utils/bst defined-in "utils-bst.stanza"
+package utils/buffered-stream defined-in "utils-buffered-stream.stanza"
+package utils/char defined-in "utils-char.stanza"
+package utils/math defined-in "utils-math.stanza"
+package utils/os defined-in "utils-os.stanza"
+package utils/reader defined-in "utils-reader.stanza"
+package utils/rnd defined-in "utils-rnd.stanza"
+package utils/seqable defined-in "utils-seqable.stanza"
+package utils/string defined-in "utils-string.stanza"
+
