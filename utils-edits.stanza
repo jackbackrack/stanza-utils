@@ -1,7 +1,7 @@
-defpackage edits :
+defpackage utils/edits :
   import core
   import collections
-  import utils
+  import utils/seqable
 
 public var *trace-edits?*:True|False = false
 val *edit-ids* = to-seq(0 to false)
