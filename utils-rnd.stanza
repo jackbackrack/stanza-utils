@@ -2,14 +2,16 @@ defpackage utils/rnd :
   import core
   import math
 
+public var RANDOM:Random = Random(current-time-us())
+
 public defn rndi (lo:Int, hi:Int) -> Int :
-  (rand() % (hi - lo + 1)) + lo
+  (next-int(RANDOM) % (hi - lo + 1)) + lo
 
 public defn rnd (lo:Int, hi:Int): rndi(lo, hi)
 
 public defn rndf () -> Float :
   val n = 1000000
-  to-float(rand() % n) / to-float(n)
+  to-float(next-int(RANDOM) % n) / to-float(n)
 
 public defn rndf (lo:Float, hi:Float) -> Float :
   val r = rndf()
@@ -20,7 +22,7 @@ public defn rnd (lo:Float, hi:Float): rndf(lo, hi)
 
 public defn rndd () -> Double :
   val n = 1000000
-  to-double(rand() % n) / to-double(n)
+  to-double(next-int(RANDOM) % n) / to-double(n)
 
 public defn rndd (lo:Double, hi:Double) -> Double :
   val r = rndd()
