@@ -4,10 +4,14 @@ defpackage utils/math :
 
 public defn sqr (x:Float) -> Float : x * x
 
-public defn modulo (x:Float, y:Float) -> Float :
-  val d = x / y
-  val f = d - to-float(to-int(d))
-  y * f
+extern fmodf: (float, float) -> float
+extern fmod: (double, double) -> double
+
+public lostanza defn modulo (a:ref<Float>, b:ref<Float>) -> ref<Float> :
+  return new Float{ call-c fmodf(a.value, b.value) }
+
+public lostanza defn modulo (a:ref<Double>, b:ref<Double>) -> ref<Double> :
+  return new Double{ call-c fmod(a.value, b.value) }
 
 public defn sign (x:Float) -> Float :
   1.0f when x > 0.0f else -1.0f when x < 0.0f else 0.0f
