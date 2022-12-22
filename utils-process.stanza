@@ -3,43 +3,24 @@
 defpackage utils/process :
   import core
   import collections
-  import utils
 
-lostanza deftype C-Process :
-  in: ptr<?>
-  out: ptr<?>
-  err: ptr<?>
-  failure: int
+#if-defined(PLATFORM-WINDOWS):
+  extern terminate_process: (long) -> int
+  public lostanza defn kill-process (p: ref<Process>) -> ref<False>:
+    if call-c terminate_process(p.pid) != 0:
+      throw(KillProcessException(new Long{p.pid}, core/windows-error-msg()))
+    return false
 
-val FAILURES = [ `no, `pipe, `fork, `exec, `exit ]
+#else:
+  extern kill: (long, int) -> int
+  public lostanza defn kill-process (p: ref<Process>) -> ref<False>:
+    if call-c kill(p.pid, 6) != 0: ; sigabrt
+      throw(KillProcessException(new Long{p.pid}, core/linux-error-msg()))
+    return false
 
-extern malloc: (long) -> ptr<?>
-extern free: (ptr<?>) -> int
-extern open_process: (ptr<ptr<byte>>) -> ptr<C-Process>
+public defstruct KillProcessException <: Exception:
+  pid: Long
+  msg: String
 
-public defstruct MyProcess :
-  in:  FileOutputStream
-  out: FileInputStream
-  err: FileInputStream
-
-public defstruct ProcessException <: Exception :
- code : Symbol
-
-defmethod print (o:OutputStream, e:ProcessException) :
-  print(o, "Error occurred when starting process %_" % [ code(e) ])
-
-public lostanza defn MyProcess (args:ref<Tuple<String>>) -> ref<MyProcess> :
-  val ca = call-c malloc((args.length + 1) * sizeof(long)) as ptr<ptr<byte>>
-  for (var i:int = 0, i < args.length, i = i + 1) :
-    ca[i] = addr!(get(args, new Int{i}).chars)
-  ca[args.length] = 0 as long as ptr<byte>
-  val cp = call-c open_process(ca)
-  call-c free(ca)
-  if cp.failure != 0 :
-    throw(ProcessException(get(FAILURES, new Int{cp.failure})))
-  val res = MyProcess(new FileOutputStream{cp.in, 1},
-                      new FileInputStream{cp.out, 1},
-                      new FileInputStream{cp.err, 1})
-  call-c free(cp)
-  return res
-  
+defmethod print (o: OutputStream, e: KillProcessException) -> False:
+  print(o, "Unable to kill process %_: %_" % [pid(e), msg(e)])

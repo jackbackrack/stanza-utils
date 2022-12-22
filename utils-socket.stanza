@@ -6,7 +6,7 @@ defpackage utils/socket :
   import utils/buffered-stream
 
 public lostanza deftype Socket <: PollableInputStream & OutputStream :
-  fd: int
+  var fd: int
 
 extern close: (int) -> int
 extern read: (int, ptr<byte>, int) -> int
@@ -207,7 +207,7 @@ public defn NullClient () :
 ;;   return false
 
 public lostanza deftype Server :
-  fd : int
+  var fd : int
 
 public defstruct ServerSocketOpenException <: IOException :
    portno: Int

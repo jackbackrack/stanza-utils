@@ -2,8 +2,7 @@
 
 defpackage utils/file-system :
   import core
-  import collections
-  import math
+  import core/parsed-path
 
 public defn split-pathname (pathname:String, c:Char) -> [String, String]:
   val index = last-index-of-char(pathname, c)
@@ -17,109 +16,232 @@ public defn dir-name (pathname:String, default:String) -> String :
 
 public defn dir-name (pathname:String) : dir-name(pathname, ".")
 
+;Retrieve the base name of a path.
+;Ex. If 'pathname' is 'A/B/C.txt', this function returns 'C.txt'.
 public defn base-name (pathname:String) -> String :
-  split-pathname(pathname, '/')[1]
+  val entries = entries(parse-path(pathname))
+  match(entries[length(entries) - 1]) :
+    (n:NamedPath) : name(n)
+    (p:PathElement) : fatal("Expected a NamedPath at the path's base.")
 
-public defn prefix-name (pathname:String) -> String :
-  split-pathname(pathname, '.')[0]
+extern getcwd: (ptr<byte>, long) -> ptr<byte>
+public lostanza defn get-cwd () -> ref<String> :
+  val bytes = call-c clib/malloc(256)
+  val res   = call-c getcwd(bytes, 256)
+  val ret   = String(res)
+  call-c clib/free(res)
+  return ret
 
-public defn suffix-name (pathname:String) -> String :
-  split-pathname(pathname, '.')[1]
+doc: \<> Get the file extension from the given file path, if it has one.
+Otherwise, return `None()`. e.g:
+```
+  file-extension?("/foo/bar/baz.txt") == One("txt")
+  file-extension?("/foo/bar/xyz")     == None()
+```
+<>
+public defn file-extension? (path: String) -> Maybe<String>:
+  val [prefix, extension?] = split-pathname(path, '.')
+  if prefix == "":
+    None()
+  else:
+    One(extension?)
 
-public val MODE-U-R = 1 << 6
-public val MODE-U-W = 1 << 7
-public val MODE-U-X = 1 << 8
-public val MODE-G-R = 1 << 3
-public val MODE-G-W = 1 << 4
-public val MODE-G-X = 1 << 5
-public val MODE-O-R = 1 << 0
-public val MODE-O-W = 1 << 1
-public val MODE-O-X = 1 << 2
+doc: \<> Strip the file extension from the given path if there is one,
+otherwise, return it unchanged. e.g:
+```
+  strip-extension("foo.bar.baz") == "foo.bar"
+  strip-extension("foo.bar") == "foo"
+  strip-extension("foo") == "foo"
+```
+<>
+public defn strip-extension (file-name: String) -> String:
+  val [prefix, extension?] = split-pathname(file-name, '.')
+  if prefix == "":
+    file-name
+  else:
+    prefix[0 to length(prefix) - 1]
 
-extern malloc: (long) -> ptr<byte>
-extern free: (ptr<byte>) -> int
-extern mkdir: (ptr<byte>, int) -> int
-extern getcwd: (ptr<byte>, int) -> ptr<byte>
-extern chdir: (ptr<byte>) -> int
-extern printf: (ptr<byte>, ? ...) -> int
-extern opendir: (ptr<byte>) -> ptr<?>
-extern readdirent: (ptr<?>, ptr<?>) -> int
-extern closedir: (ptr<?>) -> int
+doc: \<>Copy the permissions of the file specified in `src-path` to the
+destination file specified in `dst-path`.
 
-public lostanza defn mkdir (dir:ref<String>, mode:ref<Int>) -> ref<Int> :
-  val res = call-c mkdir(addr!(dir.chars), mode.value)
-  return new Int{res}
+Throws an exception if:
+- Getting the source file's permissions fails.
+- Setting the destination file's permissions fails.<>
+public defn copy-permissions (src-path: String, dst-path: String) -> False:
+  try:
+    set-file-permissions(dst-path, get-file-permissions(src-path))
+  catch (e: Exception):
+    throw(CopyPermissionsException(to-string(e)))
 
-lostanza deftype Dir :
-  value: ptr<?>
+lostanza deftype Permissions:
+  var value: long
 
-lostanza deftype DirEntry :
-  file-number:int
-  record-length:int
-  type:byte
-  name-length:byte
-  name:ptr<byte>
+doc: "Get the given path's file permissions (OS specific)."
+extern get_file_permissions: (ptr<byte>, ptr<long>) -> int
+lostanza defn get-file-permissions (path: ref<String>) -> ref<Permissions>:
+  val ret = new Permissions{0}
+  if call-c get_file_permissions(addr!(path.chars), addr!(ret.value)) == -1:
+    throw(Exception(core/platform-error-msg()))
+  return ret
 
-lostanza defn DirEntry () -> ref<?> :
-  return new DirEntry{0, 0, 0 as byte, 0 as byte, 0L as ptr<byte>}
-
-lostanza defn open? (dir:ref<Dir>) -> ref<True|False> :
-  if (dir.value as long) == 0L :
-    return false
-  else :
-    return true
-
-lostanza defn opendir (pathname:ref<String>) -> ref<Dir> :
-  val ptr = call-c opendir(addr!(pathname.chars))
-  return new Dir{ptr}
-
-public defn directory? (pathname:String) -> True|False :
-  open?(opendir(pathname))
-
-lostanza defn closedir (dir:ref<Dir>) -> ref<False> :
-  if open?(dir) == true :
-    call-c closedir(dir.value)
+doc: "Set the given path's file permissions (OS specific)."
+extern set_file_permissions: (ptr<byte>, long) -> int
+lostanza defn set-file-permissions (
+  path: ref<String>,
+  permissions: ref<Permissions>,
+) -> ref<False>:
+  if call-c set_file_permissions(addr!(path.chars), permissions.value) == -1:
+    throw(Exception(core/platform-error-msg()))
   return false
 
-lostanza defn readdir (dir:ref<Dir>, dirent:ref<DirEntry>) -> ref<True|False> :
-  if open?(dir) == true :
-    val res = call-c readdirent(dir.value, addr!([dirent]))
-    if res == 0L :
-      return true
+public defstruct CopyPermissionsException <: IOException:
+  msg: String
+defmethod print (o: OutputStream, e: CopyPermissionsException) -> False:
+  print(o, "CopyPermissionsException: %_" % [msg(e)])
+
+
+doc: \<>Copy the folder specified in `src-path` into the destination folder
+specified in `dst-path`.
+
+First, we attempt to rename the source folder to the destination folder. If
+that fails (e.g because the folders are on different filesystems), we copy the
+folder to its destination and then remove the original.
+
+An exception is thrown if:
+- The source folder does not exist.
+- The destination folder already exists.
+- An error occurs trying to copy one of the source files or directories.<>
+public defn copy-tree (src-path: String, dst-path: String) -> False:
+  if not file-exists?(src-path):
+    throw(CopyTreeException("src path '%_' doesn't exist" % [src-path]))
+
+  if file-exists?(dst-path):
+    throw(CopyTreeException("dst path '%_' already exists" % [dst-path]))
+
+  if file-type(src-path) is DirectoryType:
+    create-dir(dst-path)
+    for file in dir-files(src-path) do:
+      copy-tree(
+        to-string("%_/%_" % [src-path, file]),
+        to-string("%_/%_" % [dst-path, file]),
+      )
+  else:
+    copy-file(src-path, dst-path)
+    copy-permissions(src-path, dst-path)
+
+public defstruct CopyTreeException <: Exception:
+  msg: String|Printable
+defmethod print (o: OutputStream, e: CopyTreeException) -> False:
+  print(o, "CopyTreeException: %_" % [msg(e)])
+
+
+doc: \<>Move the folder specified in `src-path` into the destination folder
+specified in `dst-path`.
+
+First, we attempt to rename the source folder to the destination folder. If
+that fails (e.g because the folders are on different filesystems), we copy the
+folder to its destination and then remove the original.
+
+An exception is thrown if:
+- The source folder does not exist.
+- The destination folder already exists.
+- The fall-back copy-and-delete fails.<>
+public defn move-tree (src-path: String, dst-path: String) -> False:
+  if not file-exists?(src-path):
+    throw(MoveTreeException("src path '%_' doesn't exist" % [src-path]))
+
+  if file-exists?(dst-path):
+    throw(MoveTreeException("dst path '%_' already exists" % [dst-path]))
+
+  try:
+    rename-file(src-path, dst-path)
+  catch (e: FileRenameError):
+    copy-tree(src-path, dst-path)
+    delete-recursive(src-path)
+
+public defstruct MoveTreeException <: Exception:
+  msg: String|Printable
+defmethod print (o: OutputStream, e: MoveTreeException) -> False:
+  print(o, "MoveTreeException: %_" % [msg(e)])
+
+
+#if-defined(PLATFORM-WINDOWS):
+  extern get_temp_path: () -> ptr<byte>
+  doc: \<>Return a directory path suitable for temporary files. Returns the
+  value of Windows API func `GetTempPath()`, which is the first set environment
+  variable of TMP, TEMP, USERPROFILE. If none are set, returns the Windows
+  directory. <>
+  public lostanza defn temp-dir () -> ref<String>:
+    val buffer = call-c get_temp_path()
+    if buffer == null:
+      throw(Exception(core/windows-error-msg()))
+    val ret = String(buffer)
+    call-c clib/free(buffer)
+    return ret
+
+#else: ; POSIX
+  doc: \<>Return a directory path suitable for temporary files. Returns the
+  first set environment variable of $TMPDIR, $TMP, $TEMP, $TEMPDIR in that
+  order. If none are set, `/tmp` is returned.<>
+  public defn temp-dir () -> String:
+    val env-paths? = for env-var in ["TMPDIR", "TMP", "TEMP", "TEMPDIR"] first:
+      match(get-env(env-var)):
+        (value: String): One(value)
+        (_: False): None()
+
+    value?(env-paths?, "/tmp")
+
+public defn null-file () :
+  #if-defined(PLATFORM-WINDOWS): ("nul")
+  #else: ("/dev/null")
+
+;Join 'path1' and 'path2' with a path separator.
+;The two paths are normalized to use the current OS' path separators.
+public defn path-join (path1: String, path2: String) -> String :
+  path-join([path1, path2], false)
+
+;Join 'path1' and 'path2' with a path separator.
+;If 'unix?' is true, the returned path is normalized to Unix format.
+;Otherwise, the paths are normalized to use the current OS' path separators.
+;[Possible TODO]: Replace 'unix?' with an enum to support normalizing to Windows.
+public defn path-join (path1: String, path2: String, unix?:True|False) -> String :
+  path-join([path1, path2], unix?)
+
+;Join a collections of 'paths' with path separators.
+;The paths are normalized to use the current OS' path separators.
+public defn path-join (paths: Tuple<String>) -> String :
+  path-join(paths, false)
+
+;Join a collections of 'paths' with path separators.
+;If 'unix?' is true, the returned path is normalized to Unix format.
+;Otherwise, the paths are normalized to use the current OS' path separators.
+;[Possible TODO]: Replace 'unix?' with an enum to support normalizing to Windows.
+public defn path-join (paths: Tuple<String>, unix?:True|False) -> String :
+  val os-path-separator =
+    if unix? :
+      "/"
     else :
-      return false
-  else :
-    return false
+      #if-defined(PLATFORM-WINDOWS) :
+        "\\"
+      #else :
+        "/"
 
-public lostanza defn get-cwd () -> ref<String> :
-  val bytes = call-c malloc(256)
-  val res   = call-c getcwd(bytes, 256)
-  return String(res)
+  val normalized-path = paths-to-unix-format(paths)
+  val full-path = for path in normalized-path map :
+      replace(to-string(path), "/", os-path-separator)
+  
+  string-join(full-path, os-path-separator)
 
-public lostanza defn ch-dir (dirname:ref<String>) -> ref<True|False> :
-  val res = call-c chdir(addr!(dirname.chars))
-  if res == 0L :
-    return true
-  else :
-    return false
+;Convert all paths to unix format by replacing single and double backslash
+;with a single forwardslash.
+defn paths-to-unix-format (paths: Tuple<String>) -> Tuple<String> :
+  for path in paths map :
+    val without-double-slashes = replace(to-string(path), "\\\\", "\\")
+    replace(to-string(without-double-slashes), "\\", "/")
 
-lostanza defn entry-name (ent:ref<DirEntry>) -> ref<String> :
-  return String(ent.name)
-
-lostanza defn entry-dir? (ent:ref<DirEntry>) -> ref<True|False> :
-  if ent.type == 4L :
-    return true
-  else :
-    return false
-
-public defn directory-entries (pathname:String) -> Seq<String> :
-  generate<String> :
-    val ent = DirEntry()
-    defn* loop (dir) :
-      val closed? = readdir(dir, ent)
-      if closed? :
-        closedir(dir)
-      else :
-        yield(string-join([entry-name(ent) ("/" when entry-dir?(ent) else "")]))
-        loop(dir)
-    loop(opendir(pathname))
+extern chdir : (ptr<byte>) -> int
+public lostanza defn ch-dir (path:ref<String>) -> ref<False> : 
+  val ret = call-c chdir(addr!(path.chars))
+  if ret != 0 : 
+    throw(Exception(core/platform-error-msg()))
+  return false

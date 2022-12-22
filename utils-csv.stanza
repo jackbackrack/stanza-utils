@@ -1,0 +1,97 @@
+defpackage utils/csv :
+  import core
+  import collections
+  import lang-utils
+
+
+;=============================================================
+;========================= Public API ========================
+;=============================================================
+
+public defstruct CSVDict :
+  header: Tuple<String>
+  dicts: Tuple<HashTable<String, String>>
+with :
+  printer => true
+
+public defn CSVDictReader (file-path: String) -> CSVDict :
+  val lines = read-lines-from-file(file-path)
+
+  val rows =
+    for line in lines seq? :
+      val trimmed-line = trim(line)
+      if empty?(trimmed-line) :
+        None()
+      else :
+        One([line, parse-csv-row(trimmed-line)])
+
+  CSVDict(header, dicts) where :
+    val [_, header] = next(rows)
+    val dicts = to-tuple $
+      for ([line, row] in rows, line-idx in 1 to false) seq :
+        if length(row) != length(header) :
+          fatal("Wrong column count detected at line %_ \n\
+                 Header '%_' (%_ columns)\n\
+                 Row '%_'\n\
+                 Parsed row columns '%_' (%_ columns)" % [line-idx, header, length(header), line, row, length(row)])
+        else :
+          to-hashtable<String, String>(header, row)
+
+public defn write (file-path: String, csv-dict: CSVDict) -> False :
+  val o = FileOutputStream(file-path)
+  try :
+    val header = header(csv-dict)
+    print(o, to-csv-row(header))
+    do(lnprint{o, to-csv-row(_, header)}, dicts(csv-dict))
+  finally :
+    close(o)
+
+;=============================================================
+;========================== Internals ========================
+;=============================================================
+
+defn read-lines-from-file (path: String) -> Tuple<String> :
+  within istream = file-input-stream(path) :
+    to-tuple $ read-lines(istream)
+
+public defn read-csv-field (chars:Seq<Char>) -> String :
+  val buf = StringBuffer()
+  var within-quotes? = false
+  let loop () :
+    if not empty?(chars) :
+      val c = next(chars)
+      if c == '"' :
+        within-quotes? = not within-quotes?
+        loop()
+      else if within-quotes? or c != ',' :
+        add(buf, c)
+        loop()
+  to-string(buf)
+
+defn read-csv-row (input:String) -> Seq<String> :
+  val chars = to-seq(input)
+  val buf = StringBuffer()
+  generate<String> :
+    defn* loop () :
+      val x = read-csv-field(chars)
+      if not empty?(x) :
+        yield(x)
+        loop()
+
+    loop()
+
+
+defn parse-csv-row (line: String) -> Tuple<String> :
+  to-tuple $ read-csv-row(line)
+
+defn to-csv-row (row-dict: HashTable<String, String>, header: Tuple<String>) -> String :
+  to-csv-row $ seq({row-dict[_]}, header)
+
+defn to-csv-row (row: Seqable<String>) -> String :
+  defn escape (field: String) -> String :
+    if contains?(field, ',') :
+      append-all(["\"", field, "\""])
+    else :
+      field
+
+  string-join(seq(escape, row), ",")
