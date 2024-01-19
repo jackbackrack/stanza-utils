@@ -21,6 +21,6 @@ public lostanza defn usleep (t:ref<Int>) -> ref<False> :
   call-c usleep(t.value)
   return false
 
-public defn sleep (t:Float) -> False :
-  usleep(to-int $ (t * 1.0e6f))
+public defn sleep (t:Double) -> False :
+  usleep(to-int $ (t * 1.0e6))
 

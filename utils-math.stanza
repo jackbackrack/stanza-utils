@@ -3,6 +3,7 @@ defpackage utils/math :
   import math
 
 public defn sqr (x:Float) -> Float : x * x
+public defn sqr (x:Double) -> Double : x * x
 
 extern fmodf: (float, float) -> float
 extern fmod: (double, double) -> double
@@ -15,6 +16,9 @@ public lostanza defn modulo (a:ref<Double>, b:ref<Double>) -> ref<Double> :
 
 public defn sign (x:Float) -> Float :
   1.0f when x > 0.0f else -1.0f when x < 0.0f else 0.0f
+
+public defn sign (x:Double) -> Double :
+  1.0 when x > 0.0 else -1.0 when x < 0.0 else 0.0
 
 public defn f+ (a:Float, b:Float) : a + b ;; NEEDED FOR REDUCE BECAUSE OF BUG IN TYPE INFERENCE
 public defn i+ (a:Int, b:Int) : a + b     ;; NEEDED FOR REDUCE BECAUSE OF BUG IN TYPE INFERENCE
